@@ -2,16 +2,9 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-	Building2,
-	Users2,
-	LineChart,
-	CreditCard,
-	Settings2,
-} from "lucide-react";
+import { Building2, Users2, CreditCard, Settings2 } from "lucide-react";
 import OrganizationCard from "@/components/settings/organizations";
 import SubscriptionCard from "@/components/settings/subscription";
-import { UsageCard } from "@/components/settings/usage";
 import { QuickActions } from "@/components/settings/quick-actions";
 
 import { MembersCard } from "@/components/settings/members";
@@ -72,13 +65,6 @@ const SettingsContent = () => {
 						<span>Members</span>
 					</TabsTrigger>
 					<TabsTrigger
-						value="usage"
-						className="flex items-center gap-2 min-w-[120px] sm:min-w-0 whitespace-nowrap"
-					>
-						<LineChart className="h-4 w-4 flex-shrink-0" />
-						<span>Usage</span>
-					</TabsTrigger>
-					<TabsTrigger
 						value="subscription"
 						className="flex items-center gap-2 min-w-[120px] sm:min-w-0 whitespace-nowrap"
 					>
@@ -107,13 +93,6 @@ const SettingsContent = () => {
 						className="space-y-4 sm:space-y-6 px-4 sm:px-0"
 					>
 						<MembersCard />
-					</TabsContent>
-
-					<TabsContent
-						value="usage"
-						className="space-y-4 sm:space-y-6 px-4 sm:px-0"
-					>
-						<UsageCard />
 					</TabsContent>
 
 					<TabsContent

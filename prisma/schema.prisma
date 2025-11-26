@@ -25,7 +25,6 @@ model User {
   accounts      Account[]
   members       Member[]
   invitations   Invitation[]
-  Notes         Note[]
 
   @@unique([email])
   @@map("user")
@@ -87,7 +86,6 @@ model Organization {
   polarCustomerId String?
   subscription    Subscription?
   members         Member[]
-  Notes           Note[]
   invitations     Invitation[]
 
   @@unique([slug])
@@ -120,21 +118,6 @@ model Invitation {
   @@map("invitation")
 }
 
-model Note {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  authorId  String
-  tenantId  String
-  tags      String[]
-  isPublic  Boolean
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-}
-
 model Subscription {
   id                          String    @id @default(cuid())
   createdAt                   DateTime  @default(now())
@@ -159,8 +142,6 @@ model Subscription {
   customerCancellationComment String?
   metadata                    String? // JSON string
   customFieldData             String? // JSON string
-  maxUsers                    Int      @default(3)
-  maxNotes                    Int      @default(50)
   organizationId              String    @unique
 
   // Relation to Organization model

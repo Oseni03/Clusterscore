@@ -40,7 +40,6 @@ export const MembersCard = () => {
 		members,
 		invitations,
 		isAdmin,
-		subscription,
 		removeInvite,
 		removeMember: removeMemberState,
 	} = useOrganizationStore((state) => state);
@@ -113,13 +112,6 @@ export const MembersCard = () => {
 		}
 	}
 
-	const availableSlots =
-		subscription?.maxUsers === 1
-			? "Unlimited slots available"
-			: `${
-					subscription?.maxUsers || 50 - (members?.length || 0)
-				} slots available`;
-
 	return (
 		<div className="space-y-6">
 			{/* Header */}
@@ -130,8 +122,7 @@ export const MembersCard = () => {
 							User Management
 						</h1>
 						<p className="text-sm text-muted-foreground">
-							{members?.length || 0} of {subscription?.maxUsers}{" "}
-							users
+							{members?.length || 0} users
 						</p>
 					</div>
 					<DialogTrigger asChild>
@@ -167,9 +158,6 @@ export const MembersCard = () => {
 					<CardContent>
 						<div className="text-2xl font-bold">
 							{members?.length}
-						</div>
-						<div className="text-xs text-muted-foreground">
-							{availableSlots}
 						</div>
 					</CardContent>
 				</Card>
