@@ -135,7 +135,7 @@ export default function StoragePage() {
 					<CardHeader>
 						<CardTitle>File Type Distribution</CardTitle>
 					</CardHeader>
-					<CardContent className="h-[300px]">
+					<CardContent>
 						<StorageChart storageData={storageData} />
 						<div className="mt-4 space-y-2">
 							{storageData.map((item) => (
