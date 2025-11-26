@@ -1,462 +1,275 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Search, Edit, Trash2, Tag, Calendar, User } from "lucide-react";
-import { format } from "date-fns";
-import { toast } from "sonner";
-import { Note } from "@/types";
-import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
-import { authClient } from "@/lib/auth-client";
+	AreaChart,
+	Area,
+	XAxis,
+	CartesianGrid,
+	Tooltip,
+	ResponsiveContainer,
+} from "recharts";
+import { PlaybookCard } from "@/components/playbook-card";
+import { ScoreRing } from "@/components/ui/score-ring";
+import { TrendingUp, AlertTriangle } from "lucide-react";
+
+// Mock Data
+const mockTrendData = [
+	{ name: "Jan", score: 45, waste: 4200 },
+	{ name: "Feb", score: 48, waste: 4100 },
+	{ name: "Mar", score: 52, waste: 3800 },
+	{ name: "Apr", score: 55, waste: 3600 },
+	{ name: "May", score: 62, waste: 3200 },
+	{ name: "Jun", score: 68, waste: 2800 },
+	{ name: "Jul", score: 72, waste: 2400 },
+];
+
+const mockPlaybooks = [
+	{
+		id: 1,
+		title: "Revoke 12 Ex-Employee Access Tokens",
+		description:
+			"Found 12 users who are disabled in Okta but still have active tokens in Slack and Dropbox.",
+		impact: "Critical Risk",
+		impactType: "security" as const,
+		source: "slack" as const,
+		itemsCount: 12,
+	},
+	{
+		id: 2,
+		title: "Archive 48 Stale Channels",
+		description:
+			"These channels haven't had a message in over 12 months. Archiving improves search relevance.",
+		impact: "Efficiency",
+		impactType: "efficiency" as const,
+		source: "slack" as const,
+		itemsCount: 48,
+	},
+	{
+		id: 3,
+		title: "Delete 142GB Duplicate Files",
+		description:
+			"Exact duplicates found across Google Drive and Dropbox shared folders.",
+		impact: "$1,200/yr saved",
+		impactType: "savings" as const,
+		source: "google" as const,
+		itemsCount: 843,
+	},
+	{
+		id: 4,
+		title: "Remove Unused Notion Guests",
+		description:
+			"24 guest accounts have full edit access but haven't logged in for 90 days.",
+		impact: "Security Risk",
+		impactType: "security" as const,
+		source: "notion" as const,
+		itemsCount: 24,
+	},
+];
 
 const Page = () => {
-	const { activeOrganization, subscription } = useOrganizationStore(
-		(state) => state
-	);
-	const { data: session } = authClient.useSession();
-	const [notes, setNotes] = useState<Note[]>([]);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-	const [editingNote, setEditingNote] = useState<Note | null>(null);
-	const [newNote, setNewNote] = useState({
-		title: "",
-		content: "",
-		tags: "",
-		isPublic: true,
-	});
-
-	const user = session?.user;
-
-	const tenantNotes = useMemo(() => {
-		return notes.filter((note) => note.tenantId === activeOrganization?.id);
-	}, [notes, activeOrganization?.id]);
-
-	const filteredNotes = useMemo(() => {
-		return tenantNotes.filter(
-			(note) =>
-				note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				note.tags.some((tag) =>
-					tag.toLowerCase().includes(searchTerm.toLowerCase())
-				)
-		);
-	}, [tenantNotes, searchTerm]);
-
-	useEffect(() => {
-		const getNotes = async () => {
-			try {
-				const resp = await fetch("/api/notes");
-				if (!resp.ok) {
-					throw new Error("Error getting notes");
-				}
-				const { notes } = await resp.json();
-				setNotes(notes);
-			} catch (error: unknown) {
-				console.log("Error getting notes", error);
-				toast.info("Error getting notes");
-			}
-		};
-
-		getNotes();
-	}, []);
-
-	const handleCreateNote = async () => {
-		if (!user || !activeOrganization) return;
-
-		try {
-			toast.loading("Creating note...");
-			const response = await fetch("/api/notes", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					title: newNote.title || "Untitled Note",
-					content: newNote.content,
-					authorId: user.id,
-					tenantId: activeOrganization.id,
-					tags: newNote.tags
-						? newNote.tags.split(",").map((tag) => tag.trim())
-						: [],
-					isPublic: newNote.isPublic,
-				}),
-			});
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to create note: ${response.statusText}`
-				);
-			}
-
-			const { note: createdNote, message } = await response.json();
-
-			setNotes((prev) => [...prev, createdNote]);
-
-			// Reset form and close modal
-			setNewNote({ title: "", content: "", tags: "", isPublic: true });
-			setIsCreateModalOpen(false);
-
-			toast.dismiss();
-			toast.success(message || " Note created successful");
-			console.log("Note created successfully:", createdNote);
-		} catch (error) {
-			console.error("Error creating note:", error);
-			toast.dismiss();
-			toast.error("Error creating note");
-		}
-	};
-
-	const handleEditNote = (note: Note) => {
-		setEditingNote(note);
-		setNewNote({
-			title: note.title,
-			content: note.content,
-			tags: note.tags.join(", "),
-			isPublic: note.isPublic,
-		});
-	};
-
-	const handleUpdateNote = async () => {
-		if (!user || !activeOrganization || !editingNote) return;
-
-		try {
-			toast.loading("Updating note...");
-			const response = await fetch(`/api/notes/${editingNote.id}`, {
-				method: "PUT",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					title: newNote.title || "Untitled Note",
-					content: newNote.content,
-					authorId: user.id,
-					tenantId: activeOrganization.id,
-					tags: newNote.tags
-						? newNote.tags.split(",").map((tag) => tag.trim())
-						: [],
-					isPublic: newNote.isPublic,
-				}),
-			});
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to update note: ${response.statusText}`
-				);
-			}
-
-			const { note: updatedNote, message } = await response.json();
-
-			// Reset state
-			setEditingNote(null);
-			setNewNote({ title: "", content: "", tags: "", isPublic: true });
-
-			// Optional: Update local state if you're managing it
-			setNotes((prevNotes) =>
-				prevNotes.map((note) =>
-					note.id === updatedNote.id ? updatedNote : note
-				)
-			);
-
-			toast.dismiss();
-			toast.success(message || "Note updated successful");
-			console.log("Note updated successfully:", updatedNote);
-		} catch (error) {
-			console.error("Error updating note:", error);
-			toast.dismiss();
-			toast.error("Error updating note");
-		}
-	};
-
-	const handleDeleteNote = async (noteId: string) => {
-		try {
-			toast.loading("Deleting note...");
-			const response = await fetch(`/api/notes/${noteId}`, {
-				method: "DELETE",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to update note: ${response.statusText}`
-				);
-			}
-
-			const { message } = await response.json();
-
-			// Optional: Update local state if you're managing it
-			setNotes((prevNotes) =>
-				prevNotes.filter((note) => note.id !== noteId)
-			);
-			toast.dismiss();
-			toast.success(message || "Note deleted successfully");
-		} catch (error) {
-			console.error("Error deleting note:", error);
-			toast.dismiss();
-			toast.error("Error deleting note");
-		}
-	};
-
-	const canEditNote = (note: Note) => {
-		return user?.role === "admin" || note.authorId === user?.id;
-	};
-
-	const hasReachedLimit = () => {
-		return tenantNotes.length >= (subscription?.maxNotes || 50);
-	};
-
 	return (
 		<div className="p-6 space-y-6">
 			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-bold text-foreground">
-						Notes
-					</h1>
-					<p className="text-muted-foreground">
-						{tenantNotes.length} of {subscription?.maxNotes} notes
-						used
-					</p>
-				</div>
-				<Button
-					onClick={() => setIsCreateModalOpen(true)}
-					disabled={hasReachedLimit()}
-					className="gap-2"
-				>
-					<Plus className="w-4 h-4" />
-					New Note
-				</Button>
+			<div className="flex items-center">
+				<h1 className="text-2xl font-bold text-foreground">
+					Dashboard
+				</h1>
 			</div>
 
-			{/* Search */}
-			<div className="relative">
-				<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-				<Input
-					placeholder="Search notes..."
-					value={searchTerm}
-					onChange={(e) => setSearchTerm(e.target.value)}
-					className="pl-10"
-				/>
-			</div>
-
-			{/* Notes Grid */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{filteredNotes.map((note) => (
-					<Card
-						key={note.id}
-						className="hover:shadow-md transition-shadow"
-					>
-						<CardHeader className="pb-3">
-							<div className="flex items-start justify-between">
-								<h3 className="font-medium text-lg line-clamp-2">
-									{note.title}
-								</h3>
-								{canEditNote(note) && (
-									<div className="flex gap-1 ml-2">
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => handleEditNote(note)}
-											className="h-8 w-8 p-0"
-										>
-											<Edit className="w-3 h-3" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() =>
-												handleDeleteNote(note.id)
-											}
-											className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-										>
-											<Trash2 className="w-3 h-3" />
-										</Button>
-									</div>
-								)}
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<p className="text-muted-foreground line-clamp-3 text-sm">
-								{note.content}
+			{/* Overview Section */}
+			<div className="grid md:grid-cols-12 gap-6">
+				{/* Score Card */}
+				<Card className="md:col-span-4 flex flex-col items-center justify-center p-6 border-border/60 shadow-sm relative overflow-hidden">
+					<div className="absolute inset-0 bg-gradient-to-br from-muted/50 to-transparent pointer-events-none"></div>
+					<h3 className="text-sm font-medium text-muted-foreground mb-6 w-full text-center uppercase tracking-wider">
+						Current Hygiene Score
+					</h3>
+					<ScoreRing score={72} size={180} />
+					<div className="mt-6 flex gap-4 text-center">
+						<div>
+							<p className="text-xs text-muted-foreground">
+								Last Month
 							</p>
-
-							{note.tags.length > 0 && (
-								<div className="flex flex-wrap gap-1">
-									{note.tags.slice(0, 3).map((tag) => (
-										<Badge
-											key={tag}
-											variant="secondary"
-											className="text-xs"
-										>
-											<Tag className="w-2 h-2 mr-1" />
-											{tag}
-										</Badge>
-									))}
-									{note.tags.length > 3 && (
-										<Badge
-											variant="secondary"
-											className="text-xs"
-										>
-											+{note.tags.length - 3}
-										</Badge>
-									)}
-								</div>
-							)}
-
-							<div className="flex items-center justify-between text-xs text-muted-foreground">
-								<div className="flex items-center gap-1">
-									<User className="w-3 h-3" />
-									{note.author.name}
-								</div>
-								<div className="flex items-center gap-1">
-									<Calendar className="w-3 h-3" />
-									{format(note.updatedAt, "MMM d")}
-								</div>
-							</div>
-
-							{!note.isPublic && (
-								<Badge variant="outline" className="text-xs">
-									Private
-								</Badge>
-							)}
-						</CardContent>
-					</Card>
-				))}
-			</div>
-
-			{filteredNotes.length === 0 && (
-				<div className="text-center py-12">
-					<p className="text-muted-foreground">
-						{searchTerm
-							? "No notes found matching your search."
-							: "No notes yet. Create your first note!"}
-					</p>
-				</div>
-			)}
-
-			{/* Create/Edit Modal */}
-			<Dialog
-				open={isCreateModalOpen || !!editingNote}
-				onOpenChange={(open) => {
-					if (!open) {
-						setIsCreateModalOpen(false);
-						setEditingNote(null);
-						setNewNote({
-							title: "",
-							content: "",
-							tags: "",
-							isPublic: true,
-						});
-					}
-				}}
-			>
-				<DialogContent className="sm:max-w-[500px]">
-					<DialogHeader>
-						<DialogTitle>
-							{editingNote ? "Edit Note" : "Create New Note"}
-						</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-4">
+							<p className="text-sm font-bold text-muted-foreground">
+								68
+							</p>
+						</div>
+						<div className="w-px h-8 bg-border"></div>
 						<div>
-							<Label htmlFor="title">Title</Label>
-							<Input
-								id="title"
-								value={newNote.title}
-								onChange={(e) =>
-									setNewNote({
-										...newNote,
-										title: e.target.value,
-									})
-								}
-								placeholder="Enter note title..."
-							/>
-						</div>
-						<div>
-							<Label htmlFor="content">Content</Label>
-							<Textarea
-								id="content"
-								value={newNote.content}
-								onChange={(e) =>
-									setNewNote({
-										...newNote,
-										content: e.target.value,
-									})
-								}
-								placeholder="Write your note content..."
-								rows={6}
-							/>
-						</div>
-						<div>
-							<Label htmlFor="tags">Tags (comma-separated)</Label>
-							<Input
-								id="tags"
-								value={newNote.tags}
-								onChange={(e) =>
-									setNewNote({
-										...newNote,
-										tags: e.target.value,
-									})
-								}
-								placeholder="tag1, tag2, tag3"
-							/>
-						</div>
-						<div className="flex items-center space-x-2">
-							<Switch
-								id="public"
-								checked={newNote.isPublic}
-								onCheckedChange={(checked) =>
-									setNewNote({
-										...newNote,
-										isPublic: checked,
-									})
-								}
-							/>
-							<Label htmlFor="public">
-								Make this note public
-							</Label>
-						</div>
-						<div className="flex justify-end gap-2">
-							<Button
-								variant="outline"
-								onClick={() => {
-									setIsCreateModalOpen(false);
-									setEditingNote(null);
-									setNewNote({
-										title: "",
-										content: "",
-										tags: "",
-										isPublic: true,
-									});
-								}}
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={
-									editingNote
-										? handleUpdateNote
-										: handleCreateNote
-								}
-							>
-								{editingNote ? "Update" : "Create"}
-							</Button>
+							<p className="text-xs text-muted-foreground">
+								Target
+							</p>
+							<p className="text-sm font-bold text-emerald-600">
+								85
+							</p>
 						</div>
 					</div>
-				</DialogContent>
-			</Dialog>
+				</Card>
+
+				{/* Key Metrics */}
+				<div className="md:col-span-8 grid grid-cols-2 gap-6">
+					<Card className="p-6 border-border/60 shadow-sm flex flex-col justify-between">
+						<div className="flex justify-between items-start">
+							<div>
+								<p className="text-sm font-medium text-muted-foreground mb-1">
+									Projected Annual Waste
+								</p>
+								<h3 className="text-3xl font-display font-bold text-foreground">
+									$42,300
+								</h3>
+							</div>
+							<div className="h-10 w-10 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center">
+								<TrendingUp className="h-5 w-5" />
+							</div>
+						</div>
+						<div className="mt-4">
+							<div className="flex justify-between text-xs mb-1">
+								<span>Storage: $28k</span>
+								<span>Licenses: $14k</span>
+							</div>
+							<Progress
+								value={75}
+								className="h-2 bg-destructive/10 [&>div]:bg-destructive"
+							/>
+						</div>
+					</Card>
+
+					<Card className="p-6 border-border/60 shadow-sm flex flex-col justify-between">
+						<div className="flex justify-between items-start">
+							<div>
+								<p className="text-sm font-medium text-muted-foreground mb-1">
+									Active Risks
+								</p>
+								<h3 className="text-3xl font-display font-bold text-foreground">
+									14
+								</h3>
+							</div>
+							<div className="h-10 w-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+								<AlertTriangle className="h-5 w-5" />
+							</div>
+						</div>
+						<div className="mt-4 text-sm text-muted-foreground">
+							<span className="text-orange-600 font-medium">
+								3 Critical
+							</span>{" "}
+							(Ghost Access)
+							<br />
+							<span className="text-yellow-600 font-medium">
+								11 Moderate
+							</span>{" "}
+							(Public Links)
+						</div>
+					</Card>
+
+					<Card className="col-span-2 p-6 border-border/60 shadow-sm">
+						<div className="flex items-center justify-between mb-4">
+							<h3 className="text-sm font-medium text-muted-foreground">
+								Hygiene Trend
+							</h3>
+							<div className="flex gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									className="h-7 text-xs"
+								>
+									30d
+								</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 text-xs text-muted-foreground"
+								>
+									90d
+								</Button>
+							</div>
+						</div>
+						<div className="h-[160px] w-full">
+							<ResponsiveContainer width="100%" height="100%">
+								<AreaChart data={mockTrendData}>
+									<defs>
+										<linearGradient
+											id="colorScore"
+											x1="0"
+											y1="0"
+											x2="0"
+											y2="1"
+										>
+											<stop
+												offset="5%"
+												stopColor="hsl(var(--primary))"
+												stopOpacity={0.1}
+											/>
+											<stop
+												offset="95%"
+												stopColor="hsl(var(--primary))"
+												stopOpacity={0}
+											/>
+										</linearGradient>
+									</defs>
+									<CartesianGrid
+										strokeDasharray="3 3"
+										vertical={false}
+										stroke="hsl(var(--border))"
+									/>
+									<XAxis
+										dataKey="name"
+										stroke="hsl(var(--muted-foreground))"
+										fontSize={12}
+										tickLine={false}
+										axisLine={false}
+									/>
+									<Tooltip
+										contentStyle={{
+											backgroundColor: "hsl(var(--card))",
+											borderRadius: "8px",
+											border: "1px solid hsl(var(--border))",
+										}}
+										itemStyle={{
+											color: "hsl(var(--foreground))",
+										}}
+									/>
+									<Area
+										type="monotone"
+										dataKey="score"
+										stroke="hsl(var(--primary))"
+										strokeWidth={2}
+										fillOpacity={1}
+										fill="url(#colorScore)"
+									/>
+								</AreaChart>
+							</ResponsiveContainer>
+						</div>
+					</Card>
+				</div>
+			</div>
+
+			{/* Playbooks Section */}
+			<div>
+				<div className="flex items-center justify-between mb-6">
+					<h2 className="text-2xl font-display font-bold">
+						Recommended Actions
+					</h2>
+					<Button variant="outline">View All Playbooks</Button>
+				</div>
+
+				<div className="grid lg:grid-cols-2 gap-6">
+					{mockPlaybooks.map((playbook) => (
+						<PlaybookCard
+							key={playbook.id}
+							title={playbook.title}
+							description={playbook.description}
+							impact={playbook.impact}
+							impactType={playbook.impactType}
+							source={playbook.source}
+							itemsCount={playbook.itemsCount}
+						/>
+					))}
+				</div>
+			</div>
 		</div>
 	);
 };

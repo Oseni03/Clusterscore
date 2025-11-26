@@ -1,161 +1,321 @@
 "use client";
 
-import React from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-	FileText,
-	Users,
-	Shield,
-	Zap,
-	CheckCircle,
 	ArrowRight,
+	CheckCircle2,
+	Database,
+	HardDrive,
+	Lock,
+	Search,
+	Sparkles,
 } from "lucide-react";
-import { SUBSCRIPTION_PLANS } from "@/lib/utils";
-import { toast } from "sonner";
-import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { authClient } from "@/lib/auth-client";
+import Link from "next/link";
+import { NavUser } from "@/components/nav-user";
 
-const Page = () => {
-	const { user } = authClient.useSession().data || {};
+export default function LandingPage() {
 	const router = useRouter();
-
-	const features = [
-		{
-			icon: <FileText className="w-6 h-6" />,
-			title: "Smart Note Management",
-			description:
-				"Organize your team's knowledge with powerful search, tags, and collaborative editing.",
-		},
-		{
-			icon: <Users className="w-6 h-6" />,
-			title: "Multi-Tenant Architecture",
-			description:
-				"Secure isolation for multiple organizations with role-based access control.",
-		},
-		{
-			icon: <Shield className="w-6 h-6" />,
-			title: "Enterprise Security",
-			description:
-				"Advanced security features with compliance-ready data protection.",
-		},
-		{
-			icon: <Zap className="w-6 h-6" />,
-			title: "Lightning Fast",
-			description:
-				"Built for performance with instant search and real-time collaboration.",
-		},
-	];
-
-	const handleSignOut = async () => {
-		try {
-			toast.loading("Signing out");
-			authClient.signOut();
-			toast.dismiss();
-			toast.success("Signed out");
-			router.push("/");
-		} catch (error) {
-			console.log("Error signing out: ", error);
-			toast.dismiss();
-			toast.error("Error signing out");
-		}
-	};
+	const { user } = authClient.useSession().data || {};
 
 	return (
-		<div className="min-h-screen bg-background">
-			{/* Header */}
-			<header className="border-b border-border">
+		<div className="min-h-screen bg-background font-sans selection:bg-primary selection:text-primary-foreground">
+			{/* Navigation */}
+			<nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
 				<div className="container mx-auto px-4 h-16 flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center">
-							<FileText className="w-4 h-4 text-primary-foreground" />
-						</div>
-						<span className="text-xl font-bold">NotesApp</span>
+						<Image
+							src={
+								"/generated_images/minimalist_logo_for_clutterscore.png"
+							}
+							alt="Clutterscore Logo"
+							className="h-8 w-8"
+						/>
+						<span className="font-display font-bold text-xl tracking-tight">
+							Clutterscore
+						</span>
 					</div>
-					{!!user ? (
-						<div className="flex items-center gap-4">
-							<Button onClick={handleSignOut} variant="ghost">
-								Sign Out
-							</Button>
-							<Link href="/dashboard">
-								<Button>Dashboard</Button>
-							</Link>
-						</div>
-					) : (
-						<div className="flex items-center gap-4">
-							<Link href="/login">
-								<Button variant="ghost">Sign In</Button>
-							</Link>
-							<Link href="/signup">
-								<Button>Get Started</Button>
-							</Link>
-						</div>
-					)}
+					<div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+						<Link
+							href="#features"
+							className="hover:text-foreground transition-colors"
+						>
+							Features
+						</Link>
+						<Link
+							href="#pricing"
+							className="hover:text-foreground transition-colors"
+						>
+							Pricing
+						</Link>
+						<Link
+							href="#about"
+							className="hover:text-foreground transition-colors"
+						>
+							About
+						</Link>
+					</div>
+					<div className="flex items-center gap-4">
+						{user?.id ? (
+							<>
+								<NavUser />
+								<Button
+									onClick={() => router.push("/dashboard")}
+								>
+									Dashboard
+								</Button>
+							</>
+						) : (
+							<>
+								<Button
+									variant="ghost"
+									className="hidden sm:flex"
+									onClick={() => router.push("/login")}
+								>
+									Log in
+								</Button>
+								<Button onClick={() => router.push("/signup")}>
+									Start Free Audit
+								</Button>
+							</>
+						)}
+					</div>
 				</div>
-			</header>
+			</nav>
 
 			{/* Hero Section */}
-			<section className="py-20 px-4">
-				<div className="container mx-auto text-center max-w-4xl">
-					<Badge variant="secondary" className="mb-6">
-						<Zap className="w-3 h-3 mr-1" />
-						Multi-Tenant SaaS Platform
-					</Badge>
-					<h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-						The Future of Team
-						<br />
-						Knowledge Management
-					</h1>
-					<p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-						Empower your organization with secure, scalable note
-						management. Built for teams that value collaboration,
-						security, and performance.
-					</p>
-					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<Link href="/signup">
-							<Button size="lg" className="gap-2">
-								Start Free Trial
-								<ArrowRight className="w-4 h-4" />
+			<section className="relative pt-20 pb-32 overflow-hidden">
+				<div className="container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5 }}
+						className="max-w-2xl"
+					>
+						<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-destructive/10 text-destructive text-sm font-medium mb-6">
+							<span className="relative flex h-2 w-2">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+								<span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+							</span>
+							Launch Special: 40% off lifetime (First 500
+							companies)
+						</div>
+						<h1 className="font-display text-5xl md:text-7xl font-bold tracking-tighter leading-[1.1] mb-6 text-primary">
+							Your workspace is{" "}
+							<span className="text-destructive/90 decoration-4 underline-offset-4 decoration-destructive/30 underline">
+								filthy
+							</span>
+							.
+						</h1>
+						<p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-lg">
+							The self-service AI janitor that audits, scores, and
+							cleans your entire digital workspace. We&apos;ll
+							prove it in 90 seconds.
+						</p>
+
+						<div className="flex flex-col sm:flex-row gap-4 mb-12">
+							<Button
+								size="lg"
+								className="h-14 px-8 text-lg"
+								onClick={() => router.push("/dashboard")}
+							>
+								Get Your Clutterscore
+								<ArrowRight className="ml-2 h-5 w-5" />
 							</Button>
-						</Link>
-						<Link href="/dashboard">
-							<Button variant="outline" size="lg">
-								View Demo
+							<Button
+								size="lg"
+								variant="outline"
+								className="h-14 px-8 text-lg bg-background"
+							>
+								See a Demo
 							</Button>
-						</Link>
+						</div>
+
+						<div className="flex items-center gap-4 text-sm text-muted-foreground">
+							<div className="flex -space-x-2">
+								{[1, 2, 3, 4].map((i) => (
+									<div
+										key={i}
+										className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-bold"
+									>
+										{String.fromCharCode(64 + i)}
+									</div>
+								))}
+							</div>
+							<p>Trusted by 500+ messy companies</p>
+						</div>
+					</motion.div>
+
+					<motion.div
+						initial={{ opacity: 0, scale: 0.95 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ duration: 0.7, delay: 0.2 }}
+						className="relative"
+					>
+						<div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-background/50 backdrop-blur-sm">
+							<Image
+								src={
+									"/generated_images/abstract_3d_visualization_of_digital_chaos_becoming_order.png"
+								}
+								alt="Digital Cleanup Visualization"
+								className="w-full h-auto object-cover"
+							/>
+
+							{/* Floating UI Elements for Effect */}
+							<motion.div
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 1, duration: 0.5 }}
+								className="absolute bottom-8 left-8 bg-white dark:bg-zinc-900 p-4 rounded-lg shadow-lg border border-border max-w-[200px]"
+							>
+								<div className="flex items-center gap-2 mb-2">
+									<div className="h-2 w-2 rounded-full bg-destructive"></div>
+									<span className="text-xs font-bold uppercase text-muted-foreground">
+										Waste Detected
+									</span>
+								</div>
+								<p className="font-mono text-2xl font-bold">
+									$47,200
+									<span className="text-xs text-muted-foreground font-sans font-normal ml-1">
+										/yr
+									</span>
+								</p>
+							</motion.div>
+
+							<motion.div
+								initial={{ opacity: 0, x: 20 }}
+								animate={{ opacity: 1, x: 0 }}
+								transition={{ delay: 1.2, duration: 0.5 }}
+								className="absolute top-8 right-8 bg-white dark:bg-zinc-900 p-4 rounded-lg shadow-lg border border-border"
+							>
+								<div className="flex items-center gap-3">
+									<div className="h-10 w-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+										<Sparkles className="h-5 w-5" />
+									</div>
+									<div>
+										<p className="text-sm font-bold">
+											Cleanup Complete
+										</p>
+										<p className="text-xs text-muted-foreground">
+											Recovered 4TB space
+										</p>
+									</div>
+								</div>
+							</motion.div>
+						</div>
+
+						{/* Abstract decoration */}
+						<div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-blue-50 to-emerald-50 dark:from-blue-950/20 dark:to-emerald-950/20 rounded-full blur-3xl opacity-60"></div>
+					</motion.div>
+				</div>
+			</section>
+
+			{/* Problem Stats */}
+			<section className="py-24 bg-muted/30 border-y border-border/50">
+				<div className="container mx-auto px-4">
+					<div className="grid md:grid-cols-3 gap-12 text-center">
+						<div>
+							<h3 className="text-5xl font-display font-bold mb-2 text-primary">
+								68%
+							</h3>
+							<p className="text-lg font-medium mb-2">
+								of enterprise storage is dark data
+							</p>
+							<p className="text-sm text-muted-foreground">
+								No one has touched it in years.
+							</p>
+						</div>
+						<div>
+							<h3 className="text-5xl font-display font-bold mb-2 text-primary">
+								14mo
+							</h3>
+							<p className="text-lg font-medium mb-2">
+								average ghost access retention
+							</p>
+							<p className="text-sm text-muted-foreground">
+								Ex-employees still reading your docs.
+							</p>
+						</div>
+						<div>
+							<h3 className="text-5xl font-display font-bold mb-2 text-primary">
+								28%
+							</h3>
+							<p className="text-lg font-medium mb-2">
+								of time wasted searching
+							</p>
+							<p className="text-sm text-muted-foreground">
+								{"Where was that file again?"}
+							</p>
+						</div>
 					</div>
 				</div>
 			</section>
 
-			{/* Features Section */}
-			<section className="py-20 px-4 bg-muted/30">
-				<div className="container mx-auto max-w-6xl">
-					<div className="text-center mb-16">
-						<h2 className="text-3xl md:text-4xl font-bold mb-4">
-							Everything your team needs
+			{/* Features */}
+			<section className="py-32" id="features">
+				<div className="container mx-auto px-4">
+					<div className="text-center max-w-3xl mx-auto mb-20">
+						<h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
+							One dashboard to clean it all.
 						</h2>
-						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-							Powerful features designed to streamline your
-							workflow and boost productivity
+						<p className="text-xl text-muted-foreground">
+							Stop paying for storage you don&apos;t use and SaaS
+							seats for people who don&apos;t work there anymore.
 						</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-						{features.map((feature, index) => (
+
+					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+						{[
+							{
+								icon: Database,
+								title: "Storage & Waste",
+								desc: "Instantly identify and delete duplicates, large unused files, and archived projects costing you thousands.",
+							},
+							{
+								icon: Lock,
+								title: "Ghost Access",
+								desc: "Automatically detect and revoke access for ex-employees and external contractors who left months ago.",
+							},
+							{
+								icon: Search,
+								title: "Search Friction",
+								desc: "Archive zombie Slack channels and empty Notion pages to make search actually useful again.",
+							},
+							{
+								icon: HardDrive,
+								title: "SaaS Sprawl",
+								desc: "Identify unused licenses across your stack and cut your monthly burn by 20-30% instantly.",
+							},
+							{
+								icon: Sparkles,
+								title: "One-Click Hygiene",
+								desc: "Approve AI-suggested cleanup playbooks with a single click. We handle the API heavy lifting.",
+							},
+							{
+								icon: CheckCircle2,
+								title: "Audit Log",
+								desc: "Every file deleted and permission revoked is logged. Undo any action for up to 30 days.",
+							},
+						].map((feature, i) => (
 							<Card
-								key={index}
-								className="text-center hover:shadow-md transition-shadow"
+								key={i}
+								className="bg-card border-border/60 hover:border-primary/20 transition-colors"
 							>
-								<CardContent className="p-6">
-									<div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4 text-primary">
-										{feature.icon}
+								<CardHeader>
+									<div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center mb-4">
+										<feature.icon className="h-6 w-6 text-primary" />
 									</div>
-									<h3 className="font-semibold mb-2">
+									<h3 className="font-display text-xl font-bold">
 										{feature.title}
 									</h3>
-									<p className="text-sm text-muted-foreground">
-										{feature.description}
+								</CardHeader>
+								<CardContent>
+									<p className="text-muted-foreground">
+										{feature.desc}
 									</p>
 								</CardContent>
 							</Card>
@@ -165,118 +325,201 @@ const Page = () => {
 			</section>
 
 			{/* Pricing Section */}
-			<section className="py-20 px-4">
-				<div className="container mx-auto max-w-6xl">
-					<div className="text-center mb-16">
-						<h2 className="text-3xl md:text-4xl font-bold mb-4">
-							Simple, transparent pricing
+			<section className="py-32 bg-secondary/20" id="pricing">
+				<div className="container mx-auto px-4">
+					<div className="text-center max-w-3xl mx-auto mb-20">
+						<h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
+							Simple, predictable pricing.
 						</h2>
-						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-							Choose the perfect plan for your team. Scale as you
-							grow.
+						<p className="text-xl text-muted-foreground">
+							No per-seat pricing. Companies love predictable
+							cost.
 						</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 mx-auto max-w-3xl justify-items-center items-center">
-						{SUBSCRIPTION_PLANS.map((plan, index) => (
-							<Card
-								key={index}
-								className={`relative hover:shadow-lg transition-shadow ${
-									plan.popular ? "ring-2 ring-primary" : ""
-								}`}
-							>
-								{plan.popular && (
-									<Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-										Most Popular
-									</Badge>
-								)}
-								<CardContent className="p-8 text-center">
-									<div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4 text-primary">
-										<plan.icon className="w-5 h-5" />
-									</div>
-									<h3 className="text-2xl font-bold mb-2">
-										{plan.name}
-									</h3>
-									<div className="mb-4">
-										<span className="text-4xl font-bold">
-											{plan.price}
-										</span>
-										<span className="text-muted-foreground">
-											{plan.period}
-										</span>
-									</div>
-									<p className="text-muted-foreground mb-6">
-										{plan.description}
-									</p>
-									<ul className="space-y-3 mb-8">
-										{plan.features.map(
-											(feature, featureIndex) => (
-												<li
-													key={featureIndex}
-													className="flex items-center gap-2 text-sm"
-												>
-													<CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
-													{feature}
-												</li>
-											)
-										)}
-									</ul>
-									<Link href="/signup">
-										<Button
-											className="w-full"
-											variant={
-												plan.popular
-													? "default"
-													: "outline"
-											}
+
+					<div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+						{/* Free Tier */}
+						<Card className="border-border/60 flex flex-col">
+							<CardHeader>
+								<h3 className="text-2xl font-display font-bold">
+									Free
+								</h3>
+								<p className="text-muted-foreground">
+									Viral Engine
+								</p>
+								<div className="mt-4">
+									<span className="text-4xl font-bold">
+										$0
+									</span>
+									<span className="text-muted-foreground">
+										/forever
+									</span>
+								</div>
+							</CardHeader>
+							<CardContent className="flex-1">
+								<ul className="space-y-3">
+									{[
+										"Full Audit + Clutterscore",
+										"PDF Report Export",
+										"Watermark on reports",
+										"Unlimited scans",
+									].map((item, i) => (
+										<li
+											key={i}
+											className="flex items-center gap-2"
 										>
-											{plan.name === "Enterprise"
-												? "Contact Sales"
-												: "Get Started"}
-										</Button>
-									</Link>
-								</CardContent>
-							</Card>
-						))}
+											<CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+											<span className="text-sm">
+												{item}
+											</span>
+										</li>
+									))}
+								</ul>
+							</CardContent>
+							<div className="p-6 pt-0">
+								<Button
+									variant="outline"
+									className="w-full"
+									onClick={() => router.push("/dashboard")}
+								>
+									Start Free Audit
+								</Button>
+							</div>
+						</Card>
+
+						{/* Pro Tier */}
+						<Card className="border-primary shadow-lg flex flex-col relative overflow-hidden">
+							<div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
+								POPULAR
+							</div>
+							<CardHeader>
+								<h3 className="text-2xl font-display font-bold">
+									Pro
+								</h3>
+								<p className="text-muted-foreground">
+									Automated Cleanup
+								</p>
+								<div className="mt-4">
+									<span className="text-4xl font-bold">
+										$29
+									</span>
+									<span className="text-muted-foreground">
+										/mo per 50 users
+									</span>
+								</div>
+								<p className="text-xs text-muted-foreground mt-1">
+									Billed annually ($290)
+								</p>
+							</CardHeader>
+							<CardContent className="flex-1">
+								<ul className="space-y-3">
+									{[
+										"Everything in Free",
+										"Automated Cleanups",
+										"Full Dashboard Access",
+										"Savings Tracker",
+										"No Watermark",
+									].map((item, i) => (
+										<li
+											key={i}
+											className="flex items-center gap-2"
+										>
+											<CheckCircle2 className="h-5 w-5 text-primary" />
+											<span className="text-sm font-medium">
+												{item}
+											</span>
+										</li>
+									))}
+								</ul>
+							</CardContent>
+							<div className="p-6 pt-0">
+								<Button
+									className="w-full"
+									onClick={() => router.push("/dashboard")}
+								>
+									Get Started
+								</Button>
+							</div>
+						</Card>
+
+						{/* Enterprise Tier */}
+						<Card className="border-border/60 flex flex-col">
+							<CardHeader>
+								<h3 className="text-2xl font-display font-bold">
+									Enterprise
+								</h3>
+								<p className="text-muted-foreground">
+									Expert Review
+								</p>
+								<div className="mt-4">
+									<span className="text-4xl font-bold">
+										$99
+									</span>
+									<span className="text-muted-foreground">
+										/mo per 50 users
+									</span>
+								</div>
+							</CardHeader>
+							<CardContent className="flex-1">
+								<ul className="space-y-3">
+									{[
+										"Everything in Pro",
+										"Quarterly Human Expert Review",
+										"Priority Support",
+										"Custom Playbooks",
+										"SLA Guarantee",
+									].map((item, i) => (
+										<li
+											key={i}
+											className="flex items-center gap-2"
+										>
+											<CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+											<span className="text-sm">
+												{item}
+											</span>
+										</li>
+									))}
+								</ul>
+							</CardContent>
+							<div className="p-6 pt-0">
+								<Button
+									variant="outline"
+									className="w-full"
+									onClick={() => router.push("/dashboard")}
+								>
+									Contact Sales
+								</Button>
+							</div>
+						</Card>
 					</div>
 				</div>
 			</section>
 
-			{/* CTA Section */}
-			<section className="py-20 px-4 bg-muted/30">
-				<div className="container mx-auto text-center max-w-4xl">
-					<h2 className="text-3xl md:text-4xl font-bold mb-6">
-						Ready to transform your team&apos;s productivity?
+			{/* CTA */}
+			<section className="py-24 bg-primary text-primary-foreground text-center">
+				<div className="container mx-auto px-4 max-w-4xl">
+					<h2 className="text-4xl md:text-6xl font-display font-bold mb-8">
+						Stop drowning in digital trash.
 					</h2>
-					<p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-						Join thousands of teams already using NotesApp to
-						streamline their knowledge management.
+					<p className="text-xl text-primary-foreground/80 mb-12 max-w-2xl mx-auto">
+						Get your free audit today. No credit card required.
+						We&apos;ll show you exactly how much money you&apos;re
+						wasting.
 					</p>
-					<Link href="/signup">
-						<Button size="lg" className="gap-2">
-							Start Your Free Trial
-							<ArrowRight className="w-4 h-4" />
-						</Button>
-					</Link>
+					<Button
+						size="lg"
+						variant="secondary"
+						className="h-16 px-10 text-xl font-bold"
+						onClick={() => router.push("/dashboard")}
+					>
+						Start Free Audit
+						<ArrowRight className="ml-2 h-6 w-6" />
+					</Button>
+					<p className="mt-6 text-sm opacity-60">
+						Soc2 Type II Certified · Read-only Initial Access
+					</p>
 				</div>
 			</section>
-
-			{/* Footer */}
-			<footer className="border-t border-border py-12 px-4">
-				<div className="container mx-auto text-center">
-					<div className="flex items-center justify-center gap-2 mb-4">
-						<div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-							<FileText className="w-3 h-3 text-primary-foreground" />
-						</div>
-						<span className="font-semibold">NotesApp</span>
-					</div>
-					<p className="text-sm text-muted-foreground">
-						© 2024 NotesApp. Built with modern technologies for the
-						future of work.
-					</p>
-				</div>
-			</footer>
 		</div>
 	);
-};
-
-export default Page;
+}

@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Settings, Settings2, User } from "lucide-react";
+import {
+	Fan,
+	HardDrive,
+	LayoutDashboard,
+	Settings,
+	Settings2,
+	User,
+	Users,
+} from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -17,10 +25,28 @@ import { usePathname } from "next/navigation";
 // This is sample data.
 const dashboardItems = [
 	{
-		id: "notes",
-		label: "Notes",
-		icon: FileText,
+		id: "overview",
+		label: "Overview",
+		icon: LayoutDashboard,
 		url: "/dashboard",
+	},
+	{
+		id: "playbooks",
+		label: "Playbooks",
+		icon: Fan,
+		url: "/dashboard/playbooks",
+	},
+	{
+		id: "storage",
+		label: "Storage Audit",
+		icon: HardDrive,
+		url: "/dashboard/storage",
+	},
+	{
+		id: "access",
+		label: "Access Review",
+		icon: Users,
+		url: "/dashboard/access",
 	},
 	{
 		id: "settings",
