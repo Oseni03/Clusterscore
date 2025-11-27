@@ -12,6 +12,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Member, Organization } from "@/types";
+import { DashboardStoreProvider } from "@/zustand/providers/dashboard-store-provider";
 
 export default function Page({
 	children,
@@ -90,7 +91,7 @@ export default function Page({
 					</div>
 				</header>
 				<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-					{children}
+					<DashboardStoreProvider>{children}</DashboardStoreProvider>
 				</div>
 			</SidebarInset>
 		</SidebarProvider>
