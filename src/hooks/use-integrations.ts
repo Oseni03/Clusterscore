@@ -49,7 +49,7 @@ export function useIntegrations() {
 
 	const connectIntegration = (source: ToolSource) => {
 		// Redirect to OAuth flow
-		window.location.href = `/api/oauth/authorize/${source.toLowerCase()}`;
+		window.location.href = `/api/oauth/${source.toLowerCase()}/authorize`;
 	};
 
 	const disconnectIntegration = async (source: ToolSource) => {

@@ -24,7 +24,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 			"files:write",
 			"channels:manage",
 		],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/slack`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/slack/callback`,
 	},
 	GOOGLE: {
 		authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -36,7 +36,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 			"https://www.googleapis.com/auth/admin.directory.user.readonly",
 			"https://www.googleapis.com/auth/admin.directory.group.readonly",
 		],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/google`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/google/callback`,
 	},
 	MICROSOFT: {
 		authorizationUrl:
@@ -51,7 +51,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 			"Directory.Read.All",
 			"offline_access",
 		],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/microsoft`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/microsoft/callback`,
 	},
 	NOTION: {
 		authorizationUrl: "https://api.notion.com/v1/oauth/authorize",
@@ -59,7 +59,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 		clientId: process.env.NOTION_CLIENT_ID!,
 		clientSecret: process.env.NOTION_CLIENT_SECRET!,
 		scopes: [],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/notion`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/notion/callback`,
 	},
 	DROPBOX: {
 		authorizationUrl: "https://www.dropbox.com/oauth2/authorize",
@@ -72,7 +72,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 			"sharing.read",
 			"team_data.member",
 		],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/dropbox`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/dropbox/callback`,
 	},
 	FIGMA: {
 		authorizationUrl: "https://www.figma.com/oauth",
@@ -80,7 +80,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 		clientId: process.env.FIGMA_CLIENT_ID!,
 		clientSecret: process.env.FIGMA_CLIENT_SECRET!,
 		scopes: ["file_read"],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/figma`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/figma/callback`,
 	},
 	LINEAR: {
 		authorizationUrl: "https://linear.app/oauth/authorize",
@@ -88,7 +88,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 		clientId: process.env.LINEAR_CLIENT_ID!,
 		clientSecret: process.env.LINEAR_CLIENT_SECRET!,
 		scopes: ["read"],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/linear`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/linear/callback`,
 	},
 	JIRA: {
 		authorizationUrl: "https://auth.atlassian.com/authorize",
@@ -96,7 +96,7 @@ export const OAUTH_CONFIGS: Record<ToolSource, OAuthConfig> = {
 		clientId: process.env.JIRA_CLIENT_ID!,
 		clientSecret: process.env.JIRA_CLIENT_SECRET!,
 		scopes: ["read:jira-user", "read:jira-work", "offline_access"],
-		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/jira`,
+		redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/jira/callback`,
 	},
 };
 

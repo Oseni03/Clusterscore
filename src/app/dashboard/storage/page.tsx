@@ -343,7 +343,9 @@ export default function StoragePage() {
 									className="w-full mt-4"
 									asChild
 								>
-									<Link href="/files">View All Files</Link>
+									<Link href="/dashboard/files">
+										View All Files
+									</Link>
 								</Button>
 							</>
 						) : (
