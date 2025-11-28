@@ -1,132 +1,140 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-	Wand2,
-	Loader2,
-	Trash2,
-	HardDrive,
-	FileWarning,
-	FolderSearch,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Lightbulb, TrendingDown, Shield, Archive } from "lucide-react";
+import Link from "next/link";
 
-interface Suggestion {
-	title: string;
-	desc: string;
-	impact: string;
-	icon: React.ReactNode;
+interface StorageAISuggestionsProps {
+	wastedStorageGb: number;
+	largestWaster: {
+		type: string;
+		sizeGb: number;
+		location: string;
+	};
+	distribution: {
+		name: string;
+		value: number;
+		sizeGb: number;
+	}[];
 }
 
-export default function StorageAISuggestions() {
-	const [loading, setLoading] = useState<boolean>(false);
-	const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+export default function StorageAISuggestions({
+	wastedStorageGb,
+	largestWaster,
+	distribution,
+}: StorageAISuggestionsProps) {
+	const savingsPerMonth = Math.round(wastedStorageGb * 0.1);
+	const savingsPerYear = savingsPerMonth * 12;
 
-	const generateSuggestions = async () => {
-		setLoading(true);
-
-		// simulate an LLM processing delay
-		await new Promise((res) => setTimeout(res, 1500));
-
-		// mock suggestions (replace with real AI API call)
-		const aiSuggestions: Suggestion[] = [
-			{
-				title: "Delete 8TB of unused raw video footage in Marketing",
-				desc: "The Marketing/Raw_Footage directory contains duplicate .mov files last accessed 14+ months ago.",
-				icon: <FolderSearch className="h-5 w-5 text-purple-500" />,
-				impact: "High impact · ~$320/mo savings",
-			},
-			{
-				title: "Compress old project archives",
-				desc: "Compress .zip, .psd, and .sql files that haven't been accessed in over 12 months.",
-				icon: <FileWarning className="h-5 w-5 text-yellow-500" />,
-				impact: "Medium impact · ~$90/mo savings",
-			},
-			{
-				title: "Auto-expire Slack shared files",
-				desc: "Slack media files persist forever. Enable 90-day auto-cleanup to prevent future storage bloat.",
-				icon: <Trash2 className="h-5 w-5 text-red-500" />,
-				impact: "Medium impact · Prevents future bloat",
-			},
-			{
-				title: "Move inactive database backups to cold storage",
-				desc: "Backups older than 6 months should be archived to cold storage for lower cost.",
-				icon: <HardDrive className="h-5 w-5 text-blue-500" />,
-				impact: "Low impact · Long-term savings",
-			},
-		];
-
-		setSuggestions(aiSuggestions);
-		setLoading(false);
-	};
+	const suggestions = [
+		{
+			icon: TrendingDown,
+			color: "text-green-600 bg-green-100 dark:bg-green-900/30",
+			title: `Delete ${largestWaster.type} files`,
+			description: `${largestWaster.location} contains ${largestWaster.sizeGb.toFixed(1)} GB of ${largestWaster.type.toLowerCase()} files. Consider archiving or deleting old files.`,
+			impact: `Save ~$${Math.round(largestWaster.sizeGb * 0.1)}/month`,
+			action: "View Files",
+			href: "/dashboard/files",
+		},
+		{
+			icon: Archive,
+			color: "text-blue-600 bg-blue-100 dark:bg-blue-900/30",
+			title: "Remove duplicate files",
+			description:
+				"Found multiple copies of the same files across different folders. Removing duplicates can free up significant space.",
+			impact: `Potential ${Math.round(wastedStorageGb * 0.3)} GB saved`,
+			action: "Find Duplicates",
+			href: "/dashboard/files?isDuplicate=true",
+		},
+		{
+			icon: Shield,
+			color: "text-orange-600 bg-orange-100 dark:bg-orange-900/30",
+			title: "Review public files",
+			description:
+				"Some large files are publicly accessible. Review permissions to ensure sensitive data isn't exposed.",
+			impact: "Security risk",
+			action: "Review Files",
+			href: "/dashboard/files?isPublic=true",
+		},
+	];
 
 	return (
-		<Card className="mt-6">
+		<Card>
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<Wand2 className="h-5 w-5 text-primary" />
-					Storage Optimization Suggestions (AI)
-				</CardTitle>
-			</CardHeader>
-
-			<CardContent className="space-y-4">
-				<Button
-					onClick={generateSuggestions}
-					className="flex items-center gap-2"
-					disabled={loading}
-				>
-					{loading ? (
-						<>
-							<Loader2 className="h-4 w-4 animate-spin" />
-							Analyzing Storage…
-						</>
-					) : (
-						<>
-							<Wand2 className="h-4 w-4" />
-							Run Optimization Analysis
-						</>
-					)}
-				</Button>
-
-				{/* Loading Skeleton */}
-				{loading && (
-					<div className="space-y-4 mt-4">
-						{[1, 2, 3].map((i) => (
-							<div
-								key={i}
-								className="animate-pulse p-4 border rounded-lg bg-muted/30"
-							>
-								<div className="h-4 bg-muted rounded w-1/2" />
-								<div className="h-3 bg-muted rounded w-3/4 mt-2" />
-							</div>
-						))}
+				<div className="flex items-center gap-2">
+					<div className="h-8 w-8 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center dark:bg-yellow-900/30">
+						<Lightbulb className="h-4 w-4" />
 					</div>
-				)}
+					<CardTitle>AI-Powered Suggestions</CardTitle>
+				</div>
+				<p className="text-sm text-muted-foreground mt-2">
+					Based on your storage analysis, here are recommended actions
+					to optimize costs and improve security.
+				</p>
+			</CardHeader>
+			<CardContent>
+				<div className="mb-6 p-4 rounded-lg bg-muted/50 border">
+					<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+						<div>
+							<p className="text-sm font-medium">
+								Potential Savings
+							</p>
+							<p className="text-2xl md:text-3xl font-bold text-green-600">
+								${savingsPerYear}/year
+							</p>
+							<p className="text-xs text-muted-foreground mt-1">
+								By cleaning up {wastedStorageGb.toFixed(1)} GB
+								of wasted storage
+							</p>
+						</div>
+						<Button size="lg" asChild>
+							<Link href="/playbooks">
+								View Cleanup Playbooks
+							</Link>
+						</Button>
+					</div>
+				</div>
 
-				{/* AI Results */}
-				{!loading && suggestions && (
-					<div className="space-y-4 mt-4">
-						{suggestions.map((s, i) => (
+				<div className="space-y-4">
+					{suggestions.map((suggestion, index) => {
+						const Icon = suggestion.icon;
+						return (
 							<div
-								key={i}
-								className="p-4 border rounded-lg bg-muted/10 flex gap-4"
+								key={index}
+								className="flex gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
 							>
-								<div className="mt-1">{s.icon}</div>
-
-								<div className="flex-1">
-									<p className="font-medium">{s.title}</p>
-									<p className="text-sm text-muted-foreground">
-										{s.desc}
+								<div
+									className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${suggestion.color}`}
+								>
+									<Icon className="h-5 w-5" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-1">
+										<h3 className="font-semibold">
+											{suggestion.title}
+										</h3>
+										<Badge
+											variant="secondary"
+											className="self-start md:self-center"
+										>
+											{suggestion.impact}
+										</Badge>
+									</div>
+									<p className="text-sm text-muted-foreground mb-3">
+										{suggestion.description}
 									</p>
-									<p className="text-xs text-primary mt-2">
-										{s.impact}
-									</p>
+									<Button variant="outline" size="sm" asChild>
+										<Link href={suggestion.href}>
+											{suggestion.action}
+										</Link>
+									</Button>
 								</div>
 							</div>
-						))}
-					</div>
-				)}
+						);
+					})}
+				</div>
 			</CardContent>
 		</Card>
 	);
