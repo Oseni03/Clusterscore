@@ -29,6 +29,7 @@ export type PlaybookWithItems = Prisma.PlaybookGetPayload<{
 	include: {
 		items: true;
 	};
+	error?: any;
 }>;
 
 /**

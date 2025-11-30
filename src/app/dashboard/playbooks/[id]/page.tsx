@@ -65,8 +65,7 @@ const IMPACT_CONFIG = {
 export default function PlaybookDetailPage() {
 	const params = useParams();
 	const router = useRouter();
-	const { dismissPlaybook, executePlaybook, isExecuting } =
-		usePlaybooks();
+	const { dismissPlaybook, executePlaybook, isExecuting } = usePlaybooks();
 
 	const [playbook, setPlaybook] = useState<PlaybookWithItems | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -75,10 +74,13 @@ export default function PlaybookDetailPage() {
 	const [showDismissDialog, setShowDismissDialog] = useState(false);
 	const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
+	// Fetch playbook data
 	useEffect(() => {
 		const fetchPlaybook = async () => {
 			try {
 				setIsLoading(true);
+				setError(null);
+
 				const response = await fetch(`/api/playbooks/${params.id}`);
 				const data = await response.json();
 
@@ -86,18 +88,23 @@ export default function PlaybookDetailPage() {
 					throw new Error(data.error || "Failed to fetch playbook");
 				}
 
-				setPlaybook(data.playbook);
+				const playbook = data?.playbook as PlaybookWithItems;
+				setPlaybook(playbook);
 
-				// Initialize selected items
-				const selected = new Set(
-					playbook!.items
-						.filter((item) => item.isSelected)
-						.map((item) => item.id)
-				);
-				setSelectedItems(selected);
+				// Initialize selected items after playbook is loaded
+				if (playbook?.items) {
+					const selected = new Set(
+						playbook.items
+							.filter((item) => item.isSelected)
+							.map((item) => item.id)
+					);
+					setSelectedItems(selected);
+				}
 			} catch (err) {
-				setError((err as Error).message);
-				toast.error((err as Error).message);
+				const errorMessage =
+					(err as Error).message || "Failed to fetch playbook";
+				setError(errorMessage);
+				toast.error(errorMessage);
 			} finally {
 				setIsLoading(false);
 			}
@@ -106,7 +113,7 @@ export default function PlaybookDetailPage() {
 		if (params.id) {
 			fetchPlaybook();
 		}
-	}, [params.id, playbook]);
+	}, [params.id]); // Only depend on params.id, not playbook
 
 	const handleExecute = async () => {
 		if (!playbook) return;
@@ -129,8 +136,8 @@ export default function PlaybookDetailPage() {
 			setShowDismissDialog(false);
 			router.push("/dashboard/playbooks");
 		} catch (err) {
+			console.error("Dismiss error:", err);
 			// Error handled by hook
-			console.log("Dismiss error:", err);
 		}
 	};
 
@@ -147,12 +154,12 @@ export default function PlaybookDetailPage() {
 	};
 
 	const toggleAll = () => {
-		if (selectedItems.size === playbook?.items.length) {
+		if (!playbook?.items) return;
+
+		if (selectedItems.size === playbook.items.length) {
 			setSelectedItems(new Set());
 		} else {
-			setSelectedItems(
-				new Set(playbook?.items.map((item) => item.id) || [])
-			);
+			setSelectedItems(new Set(playbook.items.map((item) => item.id)));
 		}
 	};
 
@@ -191,6 +198,7 @@ export default function PlaybookDetailPage() {
 	const Icon = config.icon;
 	const canExecute =
 		playbook.status === "PENDING" || playbook.status === "APPROVED";
+	const itemsCount = playbook.items?.length || 0;
 
 	return (
 		<div className="p-4 md:p-6 space-y-6">
@@ -208,7 +216,7 @@ export default function PlaybookDetailPage() {
 			<Card className="p-6">
 				<div className="flex items-start gap-4">
 					<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center text-2xl flex-shrink-0">
-						{SOURCE_ICONS[playbook.source]}
+						{SOURCE_ICONS[playbook.source] || "📋"}
 					</div>
 					<div className="flex-1">
 						<div className="flex items-center gap-2 mb-2">
@@ -268,57 +276,58 @@ export default function PlaybookDetailPage() {
 			</Card>
 
 			{/* Items List */}
-			<Card className="p-6">
-				<div className="flex items-center justify-between mb-4">
-					<h2 className="text-lg font-semibold">
-						Items ({selectedItems.size}/{playbook.items.length}{" "}
-						selected)
-					</h2>
-					<Button variant="outline" size="sm" onClick={toggleAll}>
-						{selectedItems.size === playbook.items.length
-							? "Deselect All"
-							: "Select All"}
-					</Button>
-				</div>
+			{itemsCount > 0 && (
+				<Card className="p-6">
+					<div className="flex items-center justify-between mb-4">
+						<h2 className="text-lg font-semibold">
+							Items ({selectedItems.size}/{itemsCount} selected)
+						</h2>
+						<Button variant="outline" size="sm" onClick={toggleAll}>
+							{selectedItems.size === itemsCount
+								? "Deselect All"
+								: "Select All"}
+						</Button>
+					</div>
 
-				<div className="space-y-2 max-h-96 overflow-y-auto">
-					{playbook.items.map((item) => (
-						<div
-							key={item.id}
-							className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-						>
-							<Checkbox
-								checked={selectedItems.has(item.id)}
-								onCheckedChange={() => toggleItem(item.id)}
-								className="mt-1"
-							/>
-							<div className="flex-1 min-w-0">
-								<p className="font-medium text-sm">
-									{item.itemName}
-								</p>
-								<p className="text-xs text-muted-foreground capitalize">
-									{item.itemType}
-								</p>
-								{item.metadata &&
-									typeof item.metadata === "object" && (
-										<div className="mt-1 flex flex-wrap gap-2">
-											{Object.entries(item.metadata).map(
-												([key, value]) => (
+					<div className="space-y-2 max-h-96 overflow-y-auto">
+						{playbook.items.map((item) => (
+							<div
+								key={item.id}
+								className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+							>
+								<Checkbox
+									checked={selectedItems.has(item.id)}
+									onCheckedChange={() => toggleItem(item.id)}
+									className="mt-1"
+								/>
+								<div className="flex-1 min-w-0">
+									<p className="font-medium text-sm">
+										{item.itemName}
+									</p>
+									<p className="text-xs text-muted-foreground capitalize">
+										{item.itemType}
+									</p>
+									{item.metadata &&
+										typeof item.metadata === "object" && (
+											<div className="mt-1 flex flex-wrap gap-2">
+												{Object.entries(
+													item.metadata
+												).map(([key, value]) => (
 													<span
 														key={key}
 														className="text-xs bg-muted px-2 py-0.5 rounded"
 													>
 														{key}: {String(value)}
 													</span>
-												)
-											)}
-										</div>
-									)}
+												))}
+											</div>
+										)}
+								</div>
 							</div>
-						</div>
-					))}
-				</div>
-			</Card>
+						))}
+					</div>
+				</Card>
+			)}
 
 			{/* Actions */}
 			{canExecute && (
@@ -339,7 +348,7 @@ export default function PlaybookDetailPage() {
 						) : (
 							<>
 								<Play className="mr-2 h-4 w-4" />
-								Execute Playbook
+								Execute Playbook ({selectedItems.size} items)
 							</>
 						)}
 					</Button>
@@ -361,6 +370,18 @@ export default function PlaybookDetailPage() {
 						This playbook was executed on{" "}
 						{playbook.executedAt
 							? new Date(playbook.executedAt).toLocaleString()
+							: "unknown date"}
+					</AlertDescription>
+				</Alert>
+			)}
+
+			{playbook.status === "DISMISSED" && (
+				<Alert>
+					<XCircle className="h-4 w-4 text-muted-foreground" />
+					<AlertDescription>
+						This playbook was dismissed on{" "}
+						{playbook.dismissedAt
+							? new Date(playbook.dismissedAt).toLocaleString()
 							: "unknown date"}
 					</AlertDescription>
 				</Alert>
