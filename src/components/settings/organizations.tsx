@@ -36,22 +36,9 @@ const OrganizationCard = () => {
 	const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 
-	if (!activeOrganization) {
-		return (
-			<Card>
-				<CardContent>
-					<div className="animate-pulse space-y-2">
-						<div className="h-4 bg-gray-200 rounded w-3/4"></div>
-						<div className="h-4 bg-gray-200 rounded w-1/2"></div>
-						<div className="h-4 bg-gray-200 rounded w-2/3"></div>
-					</div>
-				</CardContent>
-			</Card>
-		);
-	}
-
 	const handleDeleteConfirm = async () => {
 		try {
+			if (!activeOrganization) return;
 			toast.loading("Deleting tenant...");
 			setIsLoading(true);
 
@@ -80,6 +67,20 @@ const OrganizationCard = () => {
 		}
 		// You might redirect or show a success message here
 	};
+
+	if (!activeOrganization) {
+		return (
+			<Card>
+				<CardContent>
+					<div className="animate-pulse space-y-2">
+						<div className="h-4 bg-gray-200 rounded w-3/4"></div>
+						<div className="h-4 bg-gray-200 rounded w-1/2"></div>
+						<div className="h-4 bg-gray-200 rounded w-2/3"></div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	return (
 		<div className="space-y-6">
