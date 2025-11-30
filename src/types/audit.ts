@@ -123,7 +123,7 @@ export function transformAuditData(
 		activeRisks: auditResult.activeRisks,
 		criticalRisks: auditResult.criticalRisks,
 		moderateRisks: auditResult.moderateRisks,
-		auditedAt: auditResult.auditedAt.toISOString(),
+		auditedAt: auditResult.auditedAt.toLocaleString(),
 		playbooks: auditResult.playbooks,
 		_count: auditResult._count,
 	};
@@ -170,8 +170,8 @@ export function transformPlaybookSummary(
 		status: playbook.status,
 		riskLevel: playbook.riskLevel,
 		estimatedSavings: playbook.estimatedSavings,
-		createdAt: playbook.createdAt.toISOString(),
-		executedAt: playbook.executedAt?.toISOString() || null,
+		createdAt: playbook.createdAt.toLocaleString(),
+		executedAt: playbook.executedAt?.toLocaleString() || null,
 	};
 }
 

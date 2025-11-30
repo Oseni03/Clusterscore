@@ -145,21 +145,38 @@ export function usePlaybooks() {
 	);
 
 	const getFilteredPlaybooks = useCallback(() => {
+		// Ensure playbooks is an array
+		if (!Array.isArray(playbooks)) {
+			return [];
+		}
+
+		// Safely get search term
 		const searchTerm =
-			typeof filters.search === "string"
+			typeof filters?.search === "string"
 				? filters.search.trim().toLowerCase()
 				: "";
 
 		return playbooks.filter((playbook) => {
+			// Safely check if playbook exists
+			if (!playbook) return false;
+
+			// Match search with null-safe checks
+			const title = (playbook.title || "").toLowerCase();
+			const description = (playbook.description || "").toLowerCase();
 			const matchesSearch =
 				searchTerm === "" ||
-				(playbook.title ?? "").toLowerCase().includes(searchTerm) ||
-				(playbook.description ?? "").toLowerCase().includes(searchTerm);
+				title.includes(searchTerm) ||
+				description.includes(searchTerm);
 
+			// Match status
 			const matchesStatus =
-				filters.status === "all" || playbook.status === filters.status;
+				!filters?.status ||
+				filters.status === "all" ||
+				playbook.status === filters.status;
 
+			// Match impact type
 			const matchesImpactType =
+				!filters?.impactType ||
 				filters.impactType === "all" ||
 				playbook.impactType === filters.impactType;
 
@@ -169,14 +186,16 @@ export function usePlaybooks() {
 
 	const getPlaybooksByStatus = useCallback(
 		(status: PlaybookStatus) => {
-			return playbooks.filter((p) => p.status === status);
+			if (!Array.isArray(playbooks)) return [];
+			return playbooks.filter((p) => p && p.status === status);
 		},
 		[playbooks]
 	);
 
 	const getPlaybooksByImpactType = useCallback(
 		(impactType: ImpactType) => {
-			return playbooks.filter((p) => p.impactType === impactType);
+			if (!Array.isArray(playbooks)) return [];
+			return playbooks.filter((p) => p && p.impactType === impactType);
 		},
 		[playbooks]
 	);
@@ -197,9 +216,9 @@ export function usePlaybooks() {
 
 	return {
 		// State
-		playbooks,
+		playbooks: Array.isArray(playbooks) ? playbooks : [],
 		selectedPlaybook,
-		filters,
+		filters: filters || { search: "", status: "all", impactType: "all" },
 		isLoading,
 		isExecuting,
 		error,
