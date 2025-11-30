@@ -26,7 +26,7 @@ export function useIntegrations() {
 	const fetchIntegrations = async () => {
 		try {
 			setIsLoading(true);
-			const response = await fetch("/api/integrations/list");
+			const response = await fetch("/api/integrations");
 			const data = await response.json();
 
 			if (!response.ok) {
