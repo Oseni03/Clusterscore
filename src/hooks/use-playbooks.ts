@@ -145,15 +145,16 @@ export function usePlaybooks() {
 	);
 
 	const getFilteredPlaybooks = useCallback(() => {
-		return playbooks.filter((playbook) => {
-			const searchLower = filters.search.toLowerCase();
+		const searchTerm =
+			typeof filters.search === "string"
+				? filters.search.trim().toLowerCase()
+				: "";
 
+		return playbooks.filter((playbook) => {
 			const matchesSearch =
-				!filters.search || // if no search term, match all
-				(playbook.title ?? "").toLowerCase().includes(searchLower) ||
-				(playbook.description ?? "")
-					.toLowerCase()
-					.includes(searchLower);
+				searchTerm === "" ||
+				(playbook.title ?? "").toLowerCase().includes(searchTerm) ||
+				(playbook.description ?? "").toLowerCase().includes(searchTerm);
 
 			const matchesStatus =
 				filters.status === "all" || playbook.status === filters.status;
