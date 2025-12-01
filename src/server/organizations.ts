@@ -147,9 +147,12 @@ export async function deleteOrganization(organizationId: string) {
 
 export async function createOrganization(
 	userId: string,
-	data: { name: string; slug: string }
+	data: { name: string; slug: string; productId?: string; trial?: boolean }
 ) {
 	try {
+		// Check if this user already has organizations
+		const existingOrgs = await prisma.member.count({ where: { userId } });
+
 		// Direct database creation bypassing auth API
 		const organization = await prisma.organization.create({
 			data: {
@@ -167,6 +170,66 @@ export async function createOrganization(
 				members: true,
 			},
 		});
+
+		// Set this organization as the active organization for the user's session
+		// so they have immediate access after creation.
+		try {
+			await setActiveOrganization(organization.id);
+		} catch (err) {
+			console.error("Failed to set active organization:", err);
+		}
+
+		// If this is the first organization for the user and a trial was requested,
+		// create a trial subscription. If a paid productId was provided, create
+		// a placeholder (pending) subscription so webhooks can update it after
+		// checkout completes. Otherwise, create a free subscription.
+		try {
+			const { createFreeSubscription } = await import("./subscription");
+
+			const productId = data.productId || "";
+
+			const isPaidPlan = productId && productId !== "";
+
+			if (existingOrgs === 0 && data.trial) {
+				// Trial for first org: 14 days
+				const trialDays = 14;
+				await import("./subscription").then((mod) =>
+					mod.createSubscription({
+						organizationId: organization.id,
+						productId,
+						amount: 0,
+						currency: "USD",
+						recurringInterval: "monthly",
+						trialDays,
+					})
+				);
+			} else if (isPaidPlan) {
+				// Create a pending subscription placeholder for paid plans.
+				const now = new Date();
+				await prisma.subscription.create({
+					data: {
+						organizationId: organization.id,
+						status: "pending",
+						amount: 0,
+						currency: "USD",
+						recurringInterval: "monthly",
+						currentPeriodStart: now,
+						currentPeriodEnd: now,
+						cancelAtPeriodEnd: false,
+						startedAt: now,
+						customerId: `pending_${organization.id}`,
+						productId: productId,
+						checkoutId: `pending_${organization.id}`,
+						createdAt: now,
+					},
+				});
+			} else {
+				// create free subscription
+				await createFreeSubscription(organization.id);
+			}
+		} catch (err) {
+			console.error("Error creating subscription for organization:", err);
+		}
 
 		return { data: organization, success: true };
 	} catch (error) {

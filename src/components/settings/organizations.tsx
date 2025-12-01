@@ -85,7 +85,7 @@ export default function OrganizationCard() {
 	const handleDeleteConfirm = useCallback(async () => {
 		if (!activeOrganization) return;
 
-		const toastId = toast.loading("Deleting tenant...");
+		const toastId = toast.loading("Deleting workspace...");
 		setIsLoading(true);
 
 		try {
@@ -96,17 +96,17 @@ export default function OrganizationCard() {
 			if (!isMountedRef.current) return;
 
 			if (!success || !data) {
-				toast.error("Failed to delete tenant", { id: toastId });
+				toast.error("Failed to delete workspace", { id: toastId });
 				return;
 			}
 
 			removeOrganization(data.id);
-			toast.success("Tenant deleted successfully", { id: toastId });
+			toast.success("Workspace deleted successfully", { id: toastId });
 			setDeleteDialogOpen(false);
 		} catch (error) {
 			if (isMountedRef.current) {
 				console.error(error);
-				toast.error("Failed to delete tenant", { id: toastId });
+				toast.error("Failed to delete workspace", { id: toastId });
 			}
 		} finally {
 			if (isMountedRef.current) setIsLoading(false);
@@ -130,7 +130,7 @@ export default function OrganizationCard() {
 					<div className="flex items-center justify-between">
 						<h3 className="text-lg font-semibold flex items-center gap-2">
 							<Building2 className="w-5 h-5" />
-							Tenant Information
+							Workspace Information
 						</h3>
 						{isAdmin && (
 							<div className="flex gap-2">
@@ -138,7 +138,7 @@ export default function OrganizationCard() {
 									variant="ghost"
 									size="icon"
 									onClick={handleOpenUpdateDialog}
-									aria-label="Edit tenant"
+									aria-label="Edit workspace"
 								>
 									<Edit className="w-4 h-4" />
 								</Button>
@@ -147,7 +147,7 @@ export default function OrganizationCard() {
 									size="icon"
 									onClick={handleOpenDeleteDialog}
 									className="hover:bg-red-50 hover:text-red-600"
-									aria-label="Delete tenant"
+									aria-label="Delete workspace"
 								>
 									<Trash2 className="w-4 h-4" />
 								</Button>
@@ -175,10 +175,10 @@ export default function OrganizationCard() {
 			<Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Update Tenant</DialogTitle>
+						<DialogTitle>Update Workspace</DialogTitle>
 						<DialogDescription>
-							Make changes to your tenant information here. Click
-							save when you&rsquo;re done.
+							Make changes to your workspace information here.
+							Click save when you&rsquo;re done.
 						</DialogDescription>
 					</DialogHeader>
 					<UpdateOrganizationForm organization={activeOrganization} />
@@ -197,7 +197,7 @@ export default function OrganizationCard() {
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This action cannot be undone. This will permanently
-							delete the tenant{" "}
+							delete the workspace{" "}
 							<strong>{activeOrganization.name}</strong> and
 							remove all associated data.
 						</AlertDialogDescription>
@@ -217,7 +217,7 @@ export default function OrganizationCard() {
 									Deleting...
 								</>
 							) : (
-								"Delete Tenant"
+								"Delete Workspace"
 							)}
 						</AlertDialogAction>
 					</AlertDialogFooter>

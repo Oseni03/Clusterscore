@@ -47,7 +47,8 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 			setGoogleLoading(true);
 			await authClient.signIn.social({
 				provider: "google",
-				// callbackURL: "/dashboard",
+				callbackURL: "/dashboard",
+				newUserCallbackURL: "/create-organization",
 			});
 			toast.success("Redirecting to Google sign-in...");
 
@@ -69,7 +70,7 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 			await authClient.signIn.magicLink({
 				email: values.email,
 				// callbackURL: "/dashboard",
-				newUserCallbackURL: "/dashboard",
+				newUserCallbackURL: "/create-organization",
 			});
 			toast.success("Magic link sent! Check your email.");
 			const returnUrl = searchParams.get("callbackUrl") || "/dashboard";

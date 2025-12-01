@@ -140,7 +140,7 @@ export default function MembersCard() {
 					<DialogHeader>
 						<DialogTitle>Invite User</DialogTitle>
 						<DialogDescription>
-							Invite a new user to your tenant.
+							Invite a new user to your workspace.
 						</DialogDescription>
 					</DialogHeader>
 					<InvitationForm onSuccess={() => setIsInviteOpen(false)} />
@@ -450,7 +450,7 @@ export default function MembersCard() {
 														</DialogTitle>
 														<DialogDescription>
 															Update member role
-															of your tenant.
+															of your workspace.
 														</DialogDescription>
 													</DialogHeader>
 													<UpdateMemberRoleForm
@@ -494,7 +494,7 @@ export default function MembersCard() {
 															This action cannot
 															be undone. This will
 															permanently remove
-															user from Tenant.
+															user from Workspace.
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
@@ -526,7 +526,7 @@ export default function MembersCard() {
 				<div className="text-center py-12">
 					<Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 					<p className="text-muted-foreground">
-						No users found for this tenant.
+						No users found for this workspace.
 					</p>
 				</div>
 			)}

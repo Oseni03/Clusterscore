@@ -45,7 +45,7 @@ export function UpdateOrganizationForm({
 
 	async function onSubmit(values: z.infer<typeof formSchema>) {
 		try {
-			toast.loading("Updating Tenants...");
+			toast.loading("Updating Workspace...");
 			setIsLoading(true);
 
 			const { data } = await updateOrganization(organization.id, values);
@@ -61,7 +61,7 @@ export function UpdateOrganizationForm({
 		} catch (error) {
 			console.error(error);
 			toast.dismiss();
-			toast.error("Failed to update tenant");
+			toast.error("Failed to update workspace");
 		} finally {
 			setIsLoading(false);
 		}
@@ -77,7 +77,7 @@ export function UpdateOrganizationForm({
 						<FormItem>
 							<FormLabel>Name</FormLabel>
 							<FormControl>
-								<Input placeholder="My Tenant" {...field} />
+								<Input placeholder="My Workspace" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -91,7 +91,7 @@ export function UpdateOrganizationForm({
 						<FormItem>
 							<FormLabel>Slug</FormLabel>
 							<FormControl>
-								<Input placeholder="my-tenant" {...field} />
+								<Input placeholder="my-workspace" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -100,7 +100,7 @@ export function UpdateOrganizationForm({
 
 				<DialogFooter>
 					<Button disabled={isLoading} type="submit">
-						Update Tenant
+						Update Workspace
 						{isLoading && (
 							<Loader2 className="size-4 animate-spin" />
 						)}
