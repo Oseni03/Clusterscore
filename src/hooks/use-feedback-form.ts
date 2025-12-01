@@ -15,9 +15,6 @@ export type FeedbackFormValues = {
 export function useFeedbackForm() {
 	const { data: session } = authClient.useSession();
 	const { activeOrganization } = useOrganizationStore((state) => state);
-	if (!session?.user || !activeOrganization) {
-		throw new Error("User must be authenticated to submit feedback.");
-	}
 
 	const form = useForm<FeedbackFormValues>({
 		defaultValues: {
@@ -29,6 +26,9 @@ export function useFeedbackForm() {
 	const [loading, setLoading] = useState(false);
 
 	const onSubmit = async (values: FeedbackFormValues) => {
+		if (!session?.user || !activeOrganization) {
+			throw new Error("User must be authenticated to submit feedback.");
+		}
 		setLoading(true);
 
 		try {
