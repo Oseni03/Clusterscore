@@ -20,39 +20,47 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { UpdateOrganizationForm } from "../forms/update-organization-form";
 import { toast } from "sonner";
-import { Card, CardContent } from "../ui/card";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { deleteOrganization } from "@/server/organizations";
 
-// Extracted loading skeleton component
+// Loading skeleton
 const OrganizationSkeleton = () => (
-	<Card>
+	<Card className="shadow-sm">
 		<CardContent className="p-6">
-			<div className="animate-pulse space-y-2">
-				<div className="h-4 bg-gray-200 rounded w-3/4"></div>
-				<div className="h-4 bg-gray-200 rounded w-1/2"></div>
-				<div className="h-4 bg-gray-200 rounded w-2/3"></div>
+			<div className="animate-pulse space-y-4">
+				<div className="h-8 bg-muted rounded w-48"></div>
+				<div className="space-y-2">
+					<div className="h-4 bg-muted rounded w-32"></div>
+					<div className="h-5 bg-muted rounded w-40"></div>
+				</div>
+				<div className="space-y-2">
+					<div className="h-4 bg-muted rounded w-32"></div>
+					<div className="h-5 bg-muted rounded w-36"></div>
+				</div>
 			</div>
 		</CardContent>
 	</Card>
 );
 
-// Extracted info field component for reusability
+// Reusable info field
 const InfoField = ({ label, value }: { label: string; value: string }) => (
 	<div className="space-y-1">
-		<label className="text-sm font-medium text-gray-500">{label}</label>
-		<div className="text-base sm:text-lg font-medium break-words">
-			{value}
-		</div>
+		<p className="text-sm font-medium text-muted-foreground">{label}</p>
+		<p className="text-base font-medium break-words">{value}</p>
 	</div>
 );
 
-const OrganizationCard = () => {
+export default function OrganizationCard() {
 	const { activeOrganization, isAdmin, removeOrganization } =
-		useOrganizationStore((state) => state);
+		useOrganizationStore((state) => ({
+			activeOrganization: state.activeOrganization,
+			isAdmin: state.isAdmin,
+			removeOrganization: state.removeOrganization,
+		}));
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -65,14 +73,14 @@ const OrganizationCard = () => {
 		};
 	}, []);
 
-	// Memoized handlers to prevent unnecessary re-renders
-	const handleOpenUpdateDialog = useCallback(() => {
-		setUpdateDialogOpen(true);
-	}, []);
-
-	const handleOpenDeleteDialog = useCallback(() => {
-		setDeleteDialogOpen(true);
-	}, []);
+	const handleOpenUpdateDialog = useCallback(
+		() => setUpdateDialogOpen(true),
+		[]
+	);
+	const handleOpenDeleteDialog = useCallback(
+		() => setDeleteDialogOpen(true),
+		[]
+	);
 
 	const handleDeleteConfirm = useCallback(async () => {
 		if (!activeOrganization) return;
@@ -97,48 +105,51 @@ const OrganizationCard = () => {
 			setDeleteDialogOpen(false);
 		} catch (error) {
 			if (isMountedRef.current) {
-				console.error("Delete organization error:", error);
+				console.error(error);
 				toast.error("Failed to delete tenant", { id: toastId });
 			}
 		} finally {
-			if (isMountedRef.current) {
-				setIsLoading(false);
-			}
+			if (isMountedRef.current) setIsLoading(false);
 		}
 	}, [activeOrganization, removeOrganization]);
 
-	const formattedDate = format(activeOrganization!.createdAt, "MMMM d, yyyy");
+	// Safe guard: show skeleton while loading or no organization
+	if (!activeOrganization) {
+		return <OrganizationSkeleton />;
+	}
+
+	const formattedDate = format(
+		new Date(activeOrganization.createdAt),
+		"MMMM d, yyyy"
+	);
 
 	return (
 		<div className="space-y-6">
-			{/* Organization Card */}
 			<Card className="shadow-sm">
-				<div className="p-6 border-b">
+				<div className="p-6 border-b border-muted">
 					<div className="flex items-center justify-between">
 						<h3 className="text-lg font-semibold flex items-center gap-2">
-							<Building2 className="w-6 h-6" />
+							<Building2 className="w-5 h-5" />
 							Tenant Information
 						</h3>
 						{isAdmin && (
-							<div className="flex items-center gap-2">
+							<div className="flex gap-2">
 								<Button
 									variant="ghost"
-									size="sm"
+									size="icon"
 									onClick={handleOpenUpdateDialog}
-									className="h-9 w-9 p-0"
 									aria-label="Edit tenant"
 								>
-									<Edit className="w-5 h-5" />
+									<Edit className="w-4 h-4" />
 								</Button>
-
 								<Button
 									variant="ghost"
-									size="sm"
-									className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
+									size="icon"
 									onClick={handleOpenDeleteDialog}
+									className="hover:bg-red-50 hover:text-red-600"
 									aria-label="Delete tenant"
 								>
-									<Trash2 className="w-5 h-5" />
+									<Trash2 className="w-4 h-4" />
 								</Button>
 							</div>
 						)}
@@ -146,14 +157,14 @@ const OrganizationCard = () => {
 				</div>
 
 				<CardContent className="p-4 sm:p-6">
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 						<InfoField
 							label="Name"
-							value={activeOrganization!.name}
+							value={activeOrganization.name}
 						/>
 						<InfoField
 							label="Slug"
-							value={activeOrganization!.slug}
+							value={activeOrganization.slug}
 						/>
 						<InfoField label="Created" value={formattedDate} />
 					</div>
@@ -162,7 +173,7 @@ const OrganizationCard = () => {
 
 			{/* Update Dialog */}
 			<Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
-				<DialogContent showCloseButton={true}>
+				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Update Tenant</DialogTitle>
 						<DialogDescription>
@@ -170,13 +181,11 @@ const OrganizationCard = () => {
 							save when you&rsquo;re done.
 						</DialogDescription>
 					</DialogHeader>
-					<UpdateOrganizationForm
-						organization={activeOrganization!}
-					/>
+					<UpdateOrganizationForm organization={activeOrganization} />
 				</DialogContent>
 			</Dialog>
 
-			{/* Delete Confirmation Alert Dialog */}
+			{/* Delete Alert Dialog */}
 			<AlertDialog
 				open={deleteDialogOpen}
 				onOpenChange={setDeleteDialogOpen}
@@ -189,8 +198,8 @@ const OrganizationCard = () => {
 						<AlertDialogDescription>
 							This action cannot be undone. This will permanently
 							delete the tenant{" "}
-							<strong>{activeOrganization!.name}</strong> and
-							remove all associated data from our servers.
+							<strong>{activeOrganization.name}</strong> and
+							remove all associated data.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -200,11 +209,11 @@ const OrganizationCard = () => {
 						<AlertDialogAction
 							onClick={handleDeleteConfirm}
 							disabled={isLoading}
-							className="bg-red-600 hover:bg-red-700"
+							className="bg-destructive hover:bg-destructive/90"
 						>
 							{isLoading ? (
 								<>
-									<Loader2 className="size-4 animate-spin mr-2" />
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 									Deleting...
 								</>
 							) : (
@@ -216,6 +225,4 @@ const OrganizationCard = () => {
 			</AlertDialog>
 		</div>
 	);
-};
-
-export default OrganizationCard;
+}

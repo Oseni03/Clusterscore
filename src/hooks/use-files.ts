@@ -22,21 +22,31 @@ export function useFiles() {
 			setIsLoading(true);
 			setError(null);
 
+			// Safely fallback to defaults if undefined
+			const page = pagination.page ?? 1;
+			const limit = pagination.limit ?? 20;
+
 			const params = new URLSearchParams({
-				page: pagination.page.toString(),
-				limit: pagination.limit.toString(),
+				page: page.toString(),
+				limit: limit.toString(),
 			});
 
-			if (filters.source !== "all") {
+			if (filters.source && filters.source !== "all") {
 				params.set("source", filters.source);
 			}
-			if (filters.type !== "all") {
+			if (filters.type && filters.type !== "all") {
 				params.set("type", filters.type);
 			}
-			if (filters.isDuplicate != null) {
+			if (
+				filters.isDuplicate !== null &&
+				filters.isDuplicate !== undefined
+			) {
 				params.set("isDuplicate", filters.isDuplicate.toString());
 			}
-			if (filters.isPubliclyShared != null) {
+			if (
+				filters.isPubliclyShared !== null &&
+				filters.isPubliclyShared !== undefined
+			) {
 				params.set(
 					"isPubliclyShared",
 					filters.isPubliclyShared.toString()
@@ -54,6 +64,7 @@ export function useFiles() {
 			setPagination({
 				total: data.pagination.total,
 				page: data.pagination.page,
+				limit: data.pagination.limit ?? limit, // preserve limit if not returned
 			});
 		} catch (err) {
 			const errorMsg = (err as Error).message || "Failed to load files";
@@ -67,17 +78,12 @@ export function useFiles() {
 	const getFilteredFiles = useCallback(() => {
 		if (!filters.search) return files;
 
+		const query = filters.search.toLowerCase();
 		return files.filter(
 			(file) =>
-				file.name
-					.toLowerCase()
-					.includes(filters.search.toLowerCase()) ||
-				file.path
-					?.toLowerCase()
-					.includes(filters.search.toLowerCase()) ||
-				file.ownerEmail
-					?.toLowerCase()
-					.includes(filters.search.toLowerCase())
+				file.name.toLowerCase().includes(query) ||
+				file.path?.toLowerCase().includes(query) ||
+				file.ownerEmail?.toLowerCase().includes(query)
 		);
 	}, [files, filters.search]);
 
@@ -115,8 +121,8 @@ export function useFiles() {
 			a.download = `files-export-${new Date().toISOString().split("T")[0]}.csv`;
 			document.body.appendChild(a);
 			a.click();
+			a.remove();
 			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
 
 			toast.success("Files exported successfully");
 		} catch (err) {
@@ -126,7 +132,7 @@ export function useFiles() {
 	}, []);
 
 	const getTotalSize = useCallback(() => {
-		return files.reduce((sum, file) => sum + file.sizeMb, 0);
+		return files.reduce((sum, file) => sum + (file.sizeMb ?? 0), 0);
 	}, [files]);
 
 	const getDuplicatesCount = useCallback(() => {
@@ -137,7 +143,6 @@ export function useFiles() {
 		return files.filter((f) => f.isPubliclyShared).length;
 	}, [files]);
 
-	// Fetch files on mount and when dependencies change
 	useEffect(() => {
 		fetchFiles();
 	}, [fetchFiles]);
