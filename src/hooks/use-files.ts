@@ -6,7 +6,7 @@ import { FilesListResponse } from "@/types/audit";
 import { toast } from "sonner";
 
 export function useFiles() {
-	const files = useFilesStore((state) => state.files);
+	const allFiles = useFilesStore((state) => state.files);
 	const filters = useFilesStore((state) => state.filters);
 	const pagination = useFilesStore((state) => state.pagination);
 
@@ -76,7 +76,7 @@ export function useFiles() {
 	}, [filters, pagination.page, pagination.limit, setFiles, setPagination]);
 
 	const getFilteredFiles = useCallback(() => {
-		let filtered = [...files];
+		let filtered = [...allFiles];
 
 		// Apply source filter
 		if (filters.source && filters.source !== "all") {
@@ -119,7 +119,7 @@ export function useFiles() {
 		}
 
 		return filtered;
-	}, [files, filters]);
+	}, [allFiles, filters]);
 
 	const deleteFile = useCallback(
 		async (fileId: string) => {
@@ -166,16 +166,16 @@ export function useFiles() {
 	}, []);
 
 	const getTotalSize = useCallback(() => {
-		return files.reduce((sum, file) => sum + (file.sizeMb ?? 0), 0);
-	}, [files]);
+		return allFiles.reduce((sum, file) => sum + (file.sizeMb ?? 0), 0);
+	}, [allFiles]);
 
 	const getDuplicatesCount = useCallback(() => {
-		return files.filter((f) => f.isDuplicate).length;
-	}, [files]);
+		return allFiles.filter((f) => f.isDuplicate).length;
+	}, [allFiles]);
 
 	const getPublicFilesCount = useCallback(() => {
-		return files.filter((f) => f.isPubliclyShared).length;
-	}, [files]);
+		return allFiles.filter((f) => f.isPubliclyShared).length;
+	}, [allFiles]);
 
 	useEffect(() => {
 		fetchFiles();
@@ -184,7 +184,7 @@ export function useFiles() {
 	return {
 		// State
 		files: getFilteredFiles(),
-		allFiles: files,
+		allFiles,
 		filters,
 		pagination,
 		isLoading,
