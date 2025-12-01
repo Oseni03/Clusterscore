@@ -1,7 +1,6 @@
 "use client";
 
-import { GalleryVerticalEnd, Loader2 } from "lucide-react";
-
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +21,7 @@ import {
 	FormMessage,
 } from "../ui/form";
 import { Skeleton } from "../ui/skeleton";
+import Logo from "../logo";
 
 const formSchema = z.object({
 	email: z.email("Please enter a valid email address"),
@@ -97,12 +97,12 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 								className="flex flex-col items-center gap-2 font-medium"
 							>
 								<div className="flex size-8 items-center justify-center rounded-md">
-									<GalleryVerticalEnd className="size-6" />
+									<Logo className="size-6" />
 								</div>
-								<span className="sr-only">Noteapp</span>
+								<span className="sr-only">Clusterscore</span>
 							</Link>
 							<h1 className="text-xl font-bold">
-								Welcome to Noteapp.
+								Welcome to Clusterscore.
 							</h1>
 							{isLogin ? (
 								<div className="text-center text-sm">
@@ -204,7 +204,7 @@ const AuthLoading = ({ className, ...props }: React.ComponentProps<"div">) => {
 				<div className="flex flex-col items-center gap-2">
 					<div className="flex flex-col items-center gap-2 font-medium">
 						<div className="flex size-8 items-center justify-center rounded-md">
-							<GalleryVerticalEnd className="size-6" />
+							<Logo className="size-6" />
 						</div>
 					</div>
 					<Skeleton className="h-7 w-48" /> {/* Title skeleton */}
