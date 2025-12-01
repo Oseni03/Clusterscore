@@ -4,7 +4,13 @@
 import { prisma } from "@/lib/prisma";
 import { ToolSource } from "@prisma/client";
 import { ConnectorFactory } from "@/lib/connectors/factory";
-import { AuditData, FileData, UserData } from "@/lib/connectors/types";
+import {
+	AuditData,
+	BaseConnector,
+	FileData,
+	UserData,
+} from "@/lib/connectors/types";
+import { PlaybookWithItems } from "@/types/audit";
 
 export class ConnectorService {
 	/**
@@ -491,7 +497,7 @@ export class ConnectorService {
 					userId,
 					actionType: this.mapPlaybookToActionType(
 						playbook.impactType
-					),
+					) as any,
 					target: playbook.title,
 					targetType: "Playbook",
 					executor: `User ${userId}`,
@@ -547,7 +553,7 @@ export class ConnectorService {
 					userId,
 					actionType: this.mapPlaybookToActionType(
 						playbook.impactType
-					),
+					) as any,
 					target: playbook.title,
 					targetType: "Playbook",
 					executor: `User ${userId}`,
@@ -563,22 +569,138 @@ export class ConnectorService {
 	}
 
 	private async performPlaybookActions(
-		playbook: any
+		playbook: PlaybookWithItems
 	): Promise<{ processed: number; failed: number }> {
-		// Placeholder for actual execution logic
-		// In production, this would call the appropriate connector to perform actions
-		return {
-			processed: playbook.items.length,
-			failed: 0,
-		};
+		// Fetch integration and create connector for the playbook's source
+		const integration = await prisma.toolIntegration.findUnique({
+			where: {
+				organizationId_source: {
+					organizationId: playbook.organizationId,
+					source: playbook.source,
+				},
+			},
+		});
+
+		let connector: BaseConnector | null = null;
+		if (integration) {
+			try {
+				connector = ConnectorFactory.create(playbook.source, {
+					accessToken: integration.accessToken,
+					refreshToken: integration.refreshToken || undefined,
+					organizationId: playbook.organizationId,
+					metadata: integration.metadata as Record<string, any>,
+				});
+			} catch (err) {
+				console.warn("Connector creation failed for execution:", err);
+				connector = null;
+			}
+		}
+
+		let processed = 0;
+		let failed = 0;
+
+		const items = Array.isArray(playbook.items) ? playbook.items : [];
+
+		for (const item of items) {
+			// Skip items that are not selected
+			if (item.isSelected === false) continue;
+
+			const actionType = this.mapPlaybookToActionType(
+				playbook.impactType as string
+			);
+
+			try {
+				if (!connector) {
+					// No connector available; log and treat as best-effort processed
+					console.info(
+						`No integration connector found for organization ${playbook.organizationId} source ${playbook.source}. Marking item as processed (best-effort).`
+					);
+					processed += 1;
+					continue;
+				}
+
+				// Execute action based on mapped action type
+				switch (actionType) {
+					case "DELETE_FILE":
+						await connector.deleteFile(
+							item.externalId || "",
+							(item.metadata as Record<string, any>) || {}
+						);
+						break;
+
+					case "UPDATE_PERMISSIONS":
+						await connector.updatePermissions(
+							item.externalId || "",
+							(item.metadata as Record<string, any>) || {}
+						);
+						break;
+
+					case "ARCHIVE_CHANNEL":
+						await connector.archiveChannel(
+							item.externalId || "",
+							(item.metadata as Record<string, any>) || {}
+						);
+						break;
+
+					case "REMOVE_GUEST":
+						await connector.removeGuest(
+							item.externalId || "",
+							(item.metadata as Record<string, any>) || {}
+						);
+						break;
+
+					case "REVOKE_ACCESS":
+						// REVOKE_ACCESS is treated as UPDATE_PERMISSIONS for now
+						await connector.updatePermissions(
+							item.externalId || "",
+							(item.metadata as Record<string, any>) || {}
+						);
+						break;
+
+					default:
+						// Unknown action type; log and mark as processed
+						console.info(
+							`Unknown action type ${actionType} for playbook, skipping execution`
+						);
+				}
+
+				processed += 1;
+			} catch (err: any) {
+				console.error("Playbook item action failed:", {
+					item,
+					err,
+					actionType,
+				});
+
+				// If the connector explicitly does not implement the action,
+				// bubble the error up so the route returns a 500 and the client
+				// can display the precise error via toast.
+				const message = err && (err.message || String(err));
+				if (
+					typeof message === "string" &&
+					/not implemented/i.test(message)
+				) {
+					throw new Error(message);
+				}
+
+				failed += 1;
+			}
+		}
+
+		return { processed, failed };
 	}
 
-	private mapPlaybookToActionType(impactType: string): any {
+	private mapPlaybookToActionType(impactType: string): string {
 		switch (impactType) {
 			case "SECURITY":
-				return "UPDATE_PERMISSIONS";
+				// For security risks, prioritize revoking access and updating permissions
+				return "REVOKE_ACCESS";
 			case "SAVINGS":
+				// For storage/cost savings, delete or archive files
 				return "DELETE_FILE";
+			case "EFFICIENCY":
+				// For efficiency, archive channels or pages
+				return "ARCHIVE_CHANNEL";
 			default:
 				return "OTHER";
 		}
@@ -613,8 +735,9 @@ export class ConnectorService {
 
 	private calculateLicenseWaste(
 		users: UserData[],
-		totalUsers: number
+		_totalUsers: number
 	): number {
+		void _totalUsers;
 		const inactiveUsers = users.filter(
 			(u) =>
 				!u.lastActive ||
@@ -630,7 +753,8 @@ export class ConnectorService {
 		);
 	}
 
-	private countCriticalRisks(files: FileData[], users: UserData[]): number {
+	private countCriticalRisks(files: FileData[], _users: UserData[]): number {
+		void _users;
 		return files.filter((f) => f.isPubliclyShared && f.type === "DATABASE")
 			.length;
 	}

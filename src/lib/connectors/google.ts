@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { google, drive_v3, admin_directory_v1 } from "googleapis";
 import {
 	BaseConnector,
@@ -9,7 +10,6 @@ import {
 import crypto from "crypto";
 
 export class GoogleConnector extends BaseConnector {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private auth: any;
 	private drive: drive_v3.Drive;
 	private admin: admin_directory_v1.Admin;
@@ -29,19 +29,32 @@ export class GoogleConnector extends BaseConnector {
 
 	async testConnection(): Promise<boolean> {
 		try {
+			await this.ensureValidToken();
 			await this.drive.about.get({ fields: "user" });
 			return true;
-		} catch {
+		} catch (error) {
+			console.error("Google connection test failed:", error);
 			return false;
 		}
 	}
 
 	async refreshToken(): Promise<string> {
-		const { credentials } = await this.auth.refreshAccessToken();
-		return credentials.access_token!;
+		try {
+			const { credentials } = await this.auth.refreshAccessToken();
+			if (!credentials.access_token) {
+				throw new Error("No access token returned");
+			}
+			return credentials.access_token;
+		} catch (error) {
+			throw new Error(
+				`Failed to refresh Google token: ${(error as Error).message}`
+			);
+		}
 	}
 
 	async fetchAuditData(): Promise<AuditData> {
+		await this.ensureValidToken();
+
 		const [files, users] = await Promise.all([
 			this.fetchFiles(),
 			this.fetchUsers(),
@@ -57,7 +70,7 @@ export class GoogleConnector extends BaseConnector {
 		return {
 			files,
 			users,
-			storageUsedGb: Math.round((totalStorage / 1024) * 100) / 100,
+			storageUsedGb: this.mbToGb(totalStorage),
 			totalLicenses: users.length,
 			activeUsers,
 		};
@@ -69,60 +82,68 @@ export class GoogleConnector extends BaseConnector {
 		const fileHashes = new Map<string, string[]>();
 
 		do {
-			const response = await this.drive.files.list({
-				pageSize: 1000,
-				pageToken,
-				fields: "nextPageToken, files(id, name, size, mimeType, md5Checksum, webViewLink, owners, viewedByMeTime, shared, permissions, createdTime)",
-				supportsAllDrives: true,
-				includeItemsFromAllDrives: true,
-			});
-
-			for (const file of response.data.files || []) {
-				const sizeMb = file.size
-					? this.bytesToMb(parseInt(file.size))
-					: 0;
-				const hash =
-					file.md5Checksum ||
-					this.generateFileHash(file.name!, sizeMb);
-
-				// Track duplicates
-				if (!fileHashes.has(hash)) {
-					fileHashes.set(hash, []);
-				}
-				fileHashes.get(hash)!.push(file.id!);
-
-				const isDuplicate = fileHashes.get(hash)!.length > 1;
-				const sharedWith = this.extractSharedWith(
-					file.permissions || []
-				);
-
-				files.push({
-					name: file.name || "Untitled",
-					sizeMb,
-					type: this.inferFileType(file.mimeType || ""),
-					source: "GOOGLE",
-					mimeType: file.mimeType || undefined,
-					fileHash: hash,
-					url: file.webViewLink || undefined,
-					path: `/${file.name}`,
-					lastAccessed: file.viewedByMeTime
-						? new Date(file.viewedByMeTime)
-						: file.createdTime
-							? new Date(file.createdTime)
-							: undefined,
-					ownerEmail: file.owners?.[0]?.emailAddress || "",
-					isPubliclyShared:
-						sharedWith.includes("anyone") ||
-						sharedWith.includes("domain"),
-					sharedWith: sharedWith.filter(
-						(e) => e !== "anyone" && e !== "domain"
-					),
-					isDuplicate,
-					duplicateGroup: isDuplicate ? hash : undefined,
+			try {
+				const response = await this.drive.files.list({
+					pageSize: 1000,
+					pageToken,
+					fields: "nextPageToken, files(id, name, size, mimeType, md5Checksum, webViewLink, owners, viewedByMeTime, shared, permissions, createdTime, modifiedTime)",
+					supportsAllDrives: true,
+					includeItemsFromAllDrives: true,
+					q: "trashed = false", // Exclude trashed files
 				});
-			}
 
-			pageToken = response.data.nextPageToken || undefined;
+				for (const file of response.data.files || []) {
+					const sizeMb = file.size
+						? this.bytesToMb(parseInt(file.size))
+						: 0;
+					const hash =
+						file.md5Checksum ||
+						this.generateFileHash(file.name || "Untitled", sizeMb);
+
+					// Track duplicates by hash
+					if (!fileHashes.has(hash)) {
+						fileHashes.set(hash, []);
+					}
+					fileHashes.get(hash)!.push(file.id!);
+
+					const isDuplicate = fileHashes.get(hash)!.length > 1;
+					const sharedWith = this.extractSharedWith(
+						file.permissions || []
+					);
+
+					files.push({
+						name: file.name || "Untitled",
+						sizeMb,
+						type: this.inferFileType(file.mimeType || ""),
+						source: "GOOGLE",
+						mimeType: file.mimeType || undefined,
+						fileHash: hash,
+						url: file.webViewLink || undefined,
+						path: `/${file.name || "Untitled"}`,
+						lastAccessed: file.viewedByMeTime
+							? new Date(file.viewedByMeTime)
+							: file.modifiedTime
+								? new Date(file.modifiedTime)
+								: file.createdTime
+									? new Date(file.createdTime)
+									: undefined,
+						ownerEmail: file.owners?.[0]?.emailAddress || "",
+						isPubliclyShared:
+							sharedWith.includes("anyone") ||
+							sharedWith.includes("domain"),
+						sharedWith: sharedWith.filter(
+							(e) => e !== "anyone" && e !== "domain"
+						),
+						isDuplicate,
+						duplicateGroup: isDuplicate ? hash : undefined,
+					});
+				}
+
+				pageToken = response.data.nextPageToken || undefined;
+			} catch (error) {
+				console.error("Error fetching Google Drive files:", error);
+				throw error;
+			}
 		} while (pageToken);
 
 		return files;
@@ -132,32 +153,38 @@ export class GoogleConnector extends BaseConnector {
 		const users: UserData[] = [];
 		let pageToken: string | undefined;
 
-		do {
-			const response = await this.admin.users.list({
-				customer: "my_customer",
-				maxResults: 500,
-				pageToken,
-				projection: "full",
-			});
-
-			for (const user of response.data.users || []) {
-				users.push({
-					email: user.primaryEmail!,
-					name: user.name?.fullName || "Untitled",
-					role: user.isAdmin ? "admin" : "user",
-					lastActive: user.lastLoginTime
-						? new Date(user.lastLoginTime)
-						: undefined,
-					isGuest: false,
-					licenseType: this.mapLicenseType(
-						user.suspended || false,
-						user.archived || false
-					),
+		try {
+			do {
+				const response = await this.admin.users.list({
+					customer: "my_customer",
+					maxResults: 500,
+					pageToken,
+					projection: "full",
 				});
-			}
 
-			pageToken = response.data.nextPageToken || undefined;
-		} while (pageToken);
+				for (const user of response.data.users || []) {
+					users.push({
+						email: user.primaryEmail!,
+						name: user.name?.fullName || "Unknown User",
+						role: user.isAdmin ? "admin" : "user",
+						lastActive: user.lastLoginTime
+							? new Date(user.lastLoginTime)
+							: undefined,
+						isGuest: false,
+						licenseType: this.mapLicenseType(
+							user.suspended || false,
+							user.archived || false
+						),
+					});
+				}
+
+				pageToken = response.data.nextPageToken || undefined;
+			} while (pageToken);
+		} catch (error) {
+			console.error("Error fetching Google Workspace users:", error);
+			// If admin API fails, return empty array (might not have admin access)
+			return [];
+		}
 
 		return users;
 	}
@@ -180,7 +207,7 @@ export class GoogleConnector extends BaseConnector {
 		return shared;
 	}
 
-	private mapLicenseType(suspended?: boolean, archived?: boolean): string {
+	private mapLicenseType(suspended: boolean, archived: boolean): string {
 		if (archived) return "archived";
 		if (suspended) return "suspended";
 		return "active";
@@ -192,6 +219,10 @@ export class GoogleConnector extends BaseConnector {
 			.update(`${name}-${size}`)
 			.digest("hex");
 	}
+
+	// ============================================================================
+	// ANALYSIS METHODS
+	// ============================================================================
 
 	async identifyDuplicateFiles(): Promise<FileData[]> {
 		const files = await this.fetchFiles();
@@ -221,5 +252,113 @@ export class GoogleConnector extends BaseConnector {
 		);
 
 		return users.filter((u) => u.lastActive && u.lastActive < cutoffDate);
+	}
+
+	// ============================================================================
+	// EXECUTION METHODS
+	// ============================================================================
+
+	/**
+	 * Delete a file permanently from Google Drive
+	 */
+	async deleteFile(
+		externalId: string,
+		_metadata: Record<string, unknown>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			await this.drive.files.delete({
+				fileId: externalId,
+				supportsAllDrives: true,
+			});
+		} catch (error) {
+			throw new Error(
+				`Failed to delete Google Drive file ${externalId}: ${(error as Error).message}`
+			);
+		}
+	}
+
+	/**
+	 * Update file permissions to restrict access (remove public/domain sharing)
+	 */
+	async updatePermissions(
+		externalId: string,
+		_metadata: Record<string, unknown>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			// Get current permissions
+			const response = await this.drive.permissions.list({
+				fileId: externalId,
+				supportsAllDrives: true,
+				fields: "permissions(id, type, role)",
+			});
+
+			// Remove anyone/domain permissions
+			const permissionsToRemove = (
+				response.data.permissions || []
+			).filter((p) => p.type === "anyone" || p.type === "domain");
+
+			for (const perm of permissionsToRemove) {
+				await this.drive.permissions.delete({
+					fileId: externalId,
+					permissionId: perm.id!,
+					supportsAllDrives: true,
+				});
+			}
+		} catch (error) {
+			throw new Error(
+				`Failed to update permissions for Google Drive file ${externalId}: ${(error as Error).message}`
+			);
+		}
+	}
+
+	/**
+	 * Remove a guest user from the Google Workspace
+	 */
+	async removeGuest(
+		externalId: string,
+		_metadata: Record<string, unknown>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			await this.admin.users.delete({
+				userKey: externalId, // Email address
+			});
+		} catch (error) {
+			throw new Error(
+				`Failed to remove guest user ${externalId}: ${(error as Error).message}`
+			);
+		}
+	}
+
+	/**
+	 * Disable a user account in Google Workspace
+	 */
+	async disableUser(
+		externalId: string,
+		_metadata: Record<string, unknown>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			await this.admin.users.update({
+				userKey: externalId, // Email address
+				requestBody: {
+					suspended: true,
+				},
+			});
+		} catch (error) {
+			throw new Error(
+				`Failed to disable user ${externalId}: ${(error as Error).message}`
+			);
+		}
 	}
 }

@@ -262,4 +262,81 @@ export class MicrosoftConnector extends BaseConnector {
 		const users = await this.fetchUsers();
 		return users.filter((u) => u.isGuest);
 	}
+
+	/**
+	 * Delete a file permanently from Microsoft OneDrive/SharePoint
+	 */
+	async deleteFile(
+		externalId: string,
+		metadata: Record<string, any>
+	): Promise<void> {
+		try {
+			const driveId = metadata?.driveId;
+			if (!driveId) {
+				throw new Error("driveId required in metadata for deletion");
+			}
+
+			await this.client
+				.api(`/drives/${driveId}/items/${externalId}`)
+				.delete();
+		} catch (error: any) {
+			throw new Error(
+				`Failed to delete Microsoft file ${externalId}: ${error.message}`
+			);
+		}
+	}
+
+	/**
+	 * Update file permissions to restrict sharing
+	 */
+	async updatePermissions(
+		externalId: string,
+		metadata: Record<string, any>
+	): Promise<void> {
+		try {
+			const driveId = metadata?.driveId;
+			if (!driveId) {
+				throw new Error("driveId required in metadata for permissions");
+			}
+
+			// Get current permissions
+			const permissions = await this.client
+				.api(`/drives/${driveId}/items/${externalId}/permissions`)
+				.get();
+
+			// Remove all sharing permissions (keep owner)
+			for (const perm of permissions.value || []) {
+				if (perm.roles?.includes("owner")) continue; // Keep owner
+
+				await this.client
+					.api(
+						`/drives/${driveId}/items/${externalId}/permissions/${perm.id}`
+					)
+					.delete();
+			}
+		} catch (error: any) {
+			throw new Error(
+				`Failed to update permissions for Microsoft file ${externalId}: ${error.message}`
+			);
+		}
+	}
+
+	/**
+	 * Disable a user account in Azure AD
+	 */
+	async disableUser(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _metadata;
+		try {
+			await this.client.api(`/users/${externalId}`).patch({
+				accountEnabled: false,
+			});
+		} catch (error: any) {
+			throw new Error(
+				`Failed to disable Microsoft user ${externalId}: ${error.message}`
+			);
+		}
+	}
 }

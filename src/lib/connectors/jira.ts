@@ -1,38 +1,31 @@
-import { Version3Client } from "jira.js";
-import { BaseConnector, ConnectorConfig, AuditData, UserData } from "./types";
-import { Issue } from "jira.js/version3/models/issue";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+	BaseConnector,
+	ConnectorConfig,
+	AuditData,
+	FileData,
+	UserData,
+} from "./types";
+import crypto from "crypto";
 
 export class JiraConnector extends BaseConnector {
-	private client: Version3Client;
-	private cloudId: string;
+	private baseUrl: string;
+	private email: string;
 
 	constructor(config: ConnectorConfig) {
 		super(config, "JIRA");
-
-		// Extract cloudId from metadata
-		if (!config.metadata?.cloudId) {
-			throw new Error(
-				"Jira cloudId is required in connector configuration"
-			);
-		}
-
-		this.cloudId = config.metadata.cloudId;
-
-		// Initialize Jira client with cloudId-based host
-		this.client = new Version3Client({
-			host: `https://api.atlassian.com/ex/jira/${this.cloudId}`,
-			authentication: {
-				oauth2: {
-					accessToken: config.accessToken,
-				},
-			},
-		});
+		// Jira uses email + API token for authentication
+		this.baseUrl = config.metadata?.cloudId
+			? `https://api.atlassian.com/ex/jira/${config.metadata.cloudId}`
+			: config.metadata?.baseUrl || "";
+		this.email = config.metadata?.email || "";
 	}
 
 	async testConnection(): Promise<boolean> {
 		try {
-			await this.client.myself.getCurrentUser();
-			return true;
+			await this.ensureValidToken();
+			const response = await this.makeRequest("/rest/api/3/myself");
+			return !!response.accountId;
 		} catch (error) {
 			console.error("Jira connection test failed:", error);
 			return false;
@@ -68,16 +61,6 @@ export class JiraConnector extends BaseConnector {
 
 			const data = await response.json();
 
-			// Update client with new token
-			this.client = new Version3Client({
-				host: `https://api.atlassian.com/ex/jira/${this.cloudId}`,
-				authentication: {
-					oauth2: {
-						accessToken: data.access_token,
-					},
-				},
-			});
-
 			return data.access_token;
 		} catch (error) {
 			throw new Error(
@@ -87,266 +70,315 @@ export class JiraConnector extends BaseConnector {
 	}
 
 	async fetchAuditData(): Promise<AuditData> {
-		const [users, projects, issues] = await Promise.all([
+		await this.ensureValidToken();
+
+		const [files, users] = await Promise.all([
+			this.fetchFiles(),
 			this.fetchUsers(),
-			this.fetchProjects(),
-			this.fetchRecentIssues(),
 		]);
 
-		// Estimate storage based on attachments and issue count
-		const storageEstimate = await this.estimateStorageUsage();
+		const totalStorage = files.reduce((sum, f) => sum + f.sizeMb, 0);
 
 		return {
-			files: [], // Jira doesn't have traditional files, but has attachments
+			files,
 			users,
-			storageUsedGb: storageEstimate,
+			storageUsedGb: this.mbToGb(totalStorage),
 			totalLicenses: users.length,
 			activeUsers: users.filter((u) => u.licenseType === "active").length,
-			metadata: {
-				projects: projects.length,
-				totalIssues: issues.total,
-				cloudId: this.cloudId,
-				siteName: this.config.metadata?.siteName,
-				siteUrl: this.config.metadata?.siteUrl,
-			},
 		};
+	}
+
+	private async fetchFiles(): Promise<FileData[]> {
+		const files: FileData[] = [];
+		const fileHashes = new Map<string, string[]>();
+
+		try {
+			let startAt = 0;
+			const maxResults = 100;
+			let total = 0;
+
+			do {
+				// Fetch issues with attachments
+				const response = await this.makeRequest(
+					`/rest/api/3/search?jql=attachments IS NOT EMPTY&startAt=${startAt}&maxResults=${maxResults}&fields=attachment,key,summary`
+				);
+
+				total = response.total;
+
+				for (const issue of response.issues || []) {
+					for (const attachment of issue.fields?.attachment || []) {
+						const sizeMb = this.bytesToMb(attachment.size || 0);
+						const hash = this.generateFileHash(
+							attachment.filename,
+							sizeMb
+						);
+
+						// Track duplicates
+						if (!fileHashes.has(hash)) {
+							fileHashes.set(hash, []);
+						}
+						fileHashes.get(hash)!.push(attachment.id);
+
+						const isDuplicate = fileHashes.get(hash)!.length > 1;
+
+						files.push({
+							name: attachment.filename,
+							sizeMb,
+							type: this.inferFileType(attachment.mimeType || ""),
+							source: "JIRA",
+							mimeType: attachment.mimeType,
+							fileHash: hash,
+							url: attachment.content,
+							path: `/${issue.key}/${attachment.filename}`,
+							lastAccessed: attachment.created
+								? new Date(attachment.created)
+								: undefined,
+							ownerEmail:
+								attachment.author?.emailAddress || undefined,
+							isPubliclyShared: false,
+							sharedWith: [],
+							isDuplicate,
+							duplicateGroup: isDuplicate ? hash : undefined,
+						});
+					}
+				}
+
+				startAt += maxResults;
+			} while (startAt < total);
+		} catch (error) {
+			console.error("Error fetching Jira attachments:", error);
+			throw error;
+		}
+
+		return files;
 	}
 
 	private async fetchUsers(): Promise<UserData[]> {
 		const users: UserData[] = [];
-		let startAt = 0;
-		const maxResults = 50;
 
-		while (true) {
-			try {
-				const response = await this.client.users.getAllUsers({
-					startAt,
-					maxResults,
+		try {
+			const startAt = 0;
+			const maxResults = 100;
+
+			// Fetch all users with site access
+			const response = await this.makeRequest(
+				`/rest/api/3/users/search?startAt=${startAt}&maxResults=${maxResults}`
+			);
+
+			for (const user of response || []) {
+				users.push({
+					email: user.emailAddress || "",
+					name: user.displayName || "Unknown User",
+					role: user.accountType === "atlassian" ? "admin" : "user",
+					lastActive: undefined, // Jira API doesn't expose last login easily
+					isGuest: user.accountType === "customer",
+					licenseType: user.active ? "active" : "inactive",
 				});
-
-				if (!response || response.length === 0) break;
-
-				for (const user of response) {
-					users.push({
-						email:
-							user.emailAddress || `${user.accountId}@jira.local`,
-						name: user.displayName || "Unknown User",
-						role:
-							user.accountType === "atlassian" ? "user" : "guest",
-						lastActive: undefined, // Jira API doesn't provide this directly
-						isGuest: user.accountType !== "atlassian",
-						licenseType: user.active ? "active" : "inactive",
-						metadata: {
-							accountId: user.accountId,
-							accountType: user.accountType,
-							avatarUrl: user.avatarUrls?.["48x48"],
-							locale: user.locale,
-							timezone: user.timeZone,
-						},
-					});
-				}
-
-				if (response.length < maxResults) break;
-				startAt += maxResults;
-			} catch (error) {
-				console.error("Error fetching Jira users:", error);
-				break;
 			}
+		} catch (error) {
+			console.error("Error fetching Jira users:", error);
+			throw error;
 		}
 
 		return users;
 	}
 
-	private async fetchProjects(): Promise<
-		Array<{ id: string; key: string; name: string; lead: string }>
-	> {
-		try {
-			const response = await this.client.projects.searchProjects({
-				maxResults: 100,
-			});
+	private async makeRequest(
+		endpoint: string,
+		options: RequestInit = {}
+	): Promise<any> {
+		const auth = Buffer.from(
+			`${this.email}:${this.config.accessToken}`
+		).toString("base64");
 
-			return (
-				response.values?.map((project) => ({
-					id: project.id!,
-					key: project.key!,
-					name: project.name!,
-					lead: project.lead?.displayName || "Unknown",
-				})) || []
+		const response = await fetch(`${this.baseUrl}${endpoint}`, {
+			...options,
+			headers: {
+				Authorization: `Basic ${auth}`,
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				...options.headers,
+			},
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Jira API error (${response.status}): ${errorText || response.statusText}`
+			);
+		}
+
+		return response.json();
+	}
+
+	private generateFileHash(name: string, size: number): string {
+		return crypto
+			.createHash("sha256")
+			.update(`${name}-${size}`)
+			.digest("hex");
+	}
+
+	// ============================================================================
+	// ANALYSIS METHODS
+	// ============================================================================
+
+	async identifyDuplicateFiles(): Promise<FileData[]> {
+		const files = await this.fetchFiles();
+		return files.filter((f) => f.isDuplicate);
+	}
+
+	async identifyInactiveUsers(
+		daysInactive: number = 90
+	): Promise<UserData[]> {
+		const users = await this.fetchUsers();
+		// Jira doesn't provide last active, so we can only filter by inactive status
+		return users.filter((u) => u.licenseType === "inactive");
+	}
+
+	async identifyStaleIssues(daysStale: number = 180): Promise<any[]> {
+		const staleIssues: any[] = [];
+		const cutoffDate = new Date(
+			Date.now() - daysStale * 24 * 60 * 60 * 1000
+		);
+		const cutoffDateStr = cutoffDate.toISOString().split("T")[0];
+
+		try {
+			const response = await this.makeRequest(
+				`/rest/api/3/search?jql=updated < "${cutoffDateStr}" AND status NOT IN (Done, Closed, Resolved)&maxResults=100`
+			);
+
+			for (const issue of response.issues || []) {
+				staleIssues.push({
+					id: issue.id,
+					key: issue.key,
+					summary: issue.fields.summary,
+					status: issue.fields.status.name,
+					lastUpdated: new Date(issue.fields.updated),
+				});
+			}
+		} catch (error) {
+			console.error("Error identifying stale Jira issues:", error);
+		}
+
+		return staleIssues;
+	}
+
+	// ============================================================================
+	// EXECUTION METHODS
+	// ============================================================================
+
+	/**
+	 * Delete an attachment from Jira
+	 */
+	async deleteFile(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			await this.makeRequest(`/rest/api/3/attachment/${externalId}`, {
+				method: "DELETE",
+			});
+		} catch (error) {
+			throw new Error(
+				`Failed to delete Jira attachment ${externalId}: ${(error as Error).message}`
+			);
+		}
+	}
+
+	/**
+	 * Deactivate a user account
+	 */
+	async disableUser(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
+
+		try {
+			// Note: Jira Cloud doesn't support user deactivation via REST API
+			// This requires admin UI or Jira Admin API
+			throw new Error(
+				"Jira Cloud API does not support user deactivation. Please use the Jira admin interface."
 			);
 		} catch (error) {
-			console.error("Error fetching Jira projects:", error);
-			return [];
+			throw new Error(
+				`Failed to disable Jira user ${externalId}: ${(error as Error).message}`
+			);
 		}
 	}
 
-	private async fetchRecentIssues(): Promise<{
-		total: number;
-		issues: Issue[];
-	}> {
-		try {
-			const response =
-				await this.client.issueSearch.searchForIssuesUsingJql({
-					jql: "ORDER BY created DESC",
-					maxResults: 1,
-					fields: ["summary"],
-				});
+	/**
+	 * Close a stale issue
+	 */
+	async closeIssue(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _metadata;
+		await this.ensureValidToken();
 
-			return {
-				total: response.total || 0,
-				issues: response.issues || [],
-			};
+		try {
+			// Get available transitions
+			const transitions = await this.makeRequest(
+				`/rest/api/3/issue/${externalId}/transitions`
+			);
+
+			// Find the "Close" or "Done" transition
+			const closeTransition = transitions.transitions.find(
+				(t: any) =>
+					t.name.toLowerCase().includes("close") ||
+					t.name.toLowerCase().includes("done")
+			);
+
+			if (closeTransition) {
+				await this.makeRequest(
+					`/rest/api/3/issue/${externalId}/transitions`,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							transition: { id: closeTransition.id },
+						}),
+					}
+				);
+			}
 		} catch (error) {
-			console.error("Error fetching Jira issues:", error);
-			return { total: 0, issues: [] };
+			throw new Error(
+				`Failed to close Jira issue ${externalId}: ${(error as Error).message}`
+			);
 		}
 	}
 
-	private async estimateStorageUsage(): Promise<number> {
-		// Jira doesn't provide direct storage metrics via API
-		// Estimate based on attachment count and average size
+	/**
+	 * Remove user from project
+	 */
+	async removeGuest(
+		externalId: string,
+		metadata: Record<string, any>
+	): Promise<void> {
+		await this.ensureValidToken();
+
 		try {
-			// Search for issues with attachments
-			const response =
-				await this.client.issueSearch.searchForIssuesUsingJql({
-					jql: "attachments is not EMPTY",
-					maxResults: 0, // Only need the count
-					fields: [],
-				});
+			const projectKey = metadata.projectKey;
 
-			const issuesWithAttachments = response.total || 0;
-
-			// Rough estimate: 2MB per issue with attachments
-			const estimatedMb = issuesWithAttachments * 2;
-			return estimatedMb / 1024; // Convert to GB
-		} catch (error) {
-			console.error("Error estimating Jira storage:", error);
-			return 0;
-		}
-	}
-
-	async identifyInactiveUsers(): Promise<UserData[]> {
-		const users = await this.fetchUsers();
-
-		// Additionally, identify users with no recent activity
-		const usersWithActivity = await this.getUsersWithRecentActivity();
-		const activeAccountIds = new Set(usersWithActivity);
-
-		return users.filter(
-			(u) =>
-				u.licenseType === "inactive" ||
-				!activeAccountIds.has(u.metadata?.accountId)
-		);
-	}
-
-	private async getUsersWithRecentActivity(): Promise<string[]> {
-		try {
-			// Find users who created or updated issues in the last 90 days
-			const ninetyDaysAgo = new Date();
-			ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-			const dateStr = ninetyDaysAgo.toISOString().split("T")[0];
-
-			const response =
-				await this.client.issueSearch.searchForIssuesUsingJql({
-					jql: `(created >= "${dateStr}" OR updated >= "${dateStr}")`,
-					maxResults: 1000,
-					fields: ["creator", "reporter", "assignee"],
-				});
-
-			const activeUsers = new Set<string>();
-
-			response.issues?.forEach((issue) => {
-				if (issue.fields.creator?.accountId) {
-					activeUsers.add(issue.fields.creator.accountId);
-				}
-				if (issue.fields.reporter?.accountId) {
-					activeUsers.add(issue.fields.reporter.accountId);
-				}
-				if (issue.fields.assignee?.accountId) {
-					activeUsers.add(issue.fields.assignee.accountId);
-				}
-			});
-
-			return Array.from(activeUsers);
-		} catch (error) {
-			console.error("Error fetching Jira user activity:", error);
-			return [];
-		}
-	}
-
-	async identifyStaleProjects(): Promise<
-		Array<{
-			id: string;
-			name: string;
-			key: string;
-			lastActivity: Date | null;
-			issueCount: number;
-		}>
-	> {
-		try {
-			const projects = await this.fetchProjects();
-			const staleProjects: Array<{
-				id: string;
-				name: string;
-				key: string;
-				lastActivity: Date | null;
-				issueCount: number;
-			}> = [];
-
-			for (const project of projects) {
-				// Get last updated issue in project
-				const response =
-					await this.client.issueSearch.searchForIssuesUsingJql({
-						jql: `project = ${project.key} ORDER BY updated DESC`,
-						maxResults: 1,
-						fields: ["updated"],
-					});
-
-				const issueCount = response.total || 0;
-				const lastIssue = response.issues?.[0];
-				const lastActivity = lastIssue?.fields.updated
-					? new Date(lastIssue.fields.updated)
-					: null;
-
-				// Consider stale if no activity in 180 days or no issues
-				const isStale =
-					issueCount === 0 ||
-					(lastActivity &&
-						Date.now() - lastActivity.getTime() >
-							180 * 24 * 60 * 60 * 1000);
-
-				if (isStale) {
-					staleProjects.push({
-						id: project.id,
-						name: project.name,
-						key: project.key,
-						lastActivity,
-						issueCount,
-					});
-				}
+			if (!projectKey) {
+				throw new Error(
+					"Project key required to remove user from project"
+				);
 			}
 
-			return staleProjects;
+			// Remove user from project role
+			await this.makeRequest(
+				`/rest/api/3/project/${projectKey}/role/${metadata.roleId || "10000"}/${externalId}`,
+				{ method: "DELETE" }
+			);
 		} catch (error) {
-			console.error("Error identifying stale Jira projects:", error);
-			return [];
+			throw new Error(
+				`Failed to remove Jira guest ${externalId}: ${(error as Error).message}`
+			);
 		}
-	}
-
-	async getCloudId(): Promise<string> {
-		return this.cloudId;
-	}
-
-	async getSiteInfo(): Promise<{
-		cloudId: string;
-		name: string;
-		url: string;
-		scopes: string[];
-	}> {
-		return {
-			cloudId: this.cloudId,
-			name: this.config.metadata?.siteName || "Unknown Site",
-			url: this.config.metadata?.siteUrl || "",
-			scopes: this.config.metadata?.scopes || [],
-		};
 	}
 }

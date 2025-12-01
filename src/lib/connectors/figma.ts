@@ -8,6 +8,11 @@ import {
 } from "./types";
 import crypto from "crypto";
 
+interface FigmaProject {
+	id: string;
+	name: string;
+}
+
 export class FigmaConnector extends BaseConnector {
 	private baseUrl = "https://api.figma.com/v1";
 
@@ -17,18 +22,26 @@ export class FigmaConnector extends BaseConnector {
 
 	async testConnection(): Promise<boolean> {
 		try {
+			await this.ensureValidToken();
 			const response = await this.makeRequest("/me");
 			return !!response.id;
-		} catch {
+		} catch (error) {
+			console.error("Figma connection test failed:", error);
 			return false;
 		}
 	}
 
 	async refreshToken(): Promise<string> {
-		throw new Error("Figma personal access tokens do not expire");
+		// Figma personal access tokens don't expire
+		// OAuth tokens would need refresh logic here
+		throw new Error(
+			"Figma personal access tokens do not expire. Use OAuth for token refresh."
+		);
 	}
 
 	async fetchAuditData(): Promise<AuditData> {
+		await this.ensureValidToken();
+
 		const [files, users] = await Promise.all([
 			this.fetchFiles(),
 			this.fetchUsers(),
@@ -39,97 +52,136 @@ export class FigmaConnector extends BaseConnector {
 		return {
 			files,
 			users,
-			storageUsedGb: Math.round((totalStorage / 1024) * 100) / 100,
+			storageUsedGb: this.mbToGb(totalStorage),
 			totalLicenses: users.length,
-			activeUsers: users.length,
+			activeUsers: users.filter((u) => u.licenseType === "full").length,
 		};
 	}
 
 	private async fetchFiles(): Promise<FileData[]> {
 		const files: FileData[] = [];
-		const teamProjects = await this.getTeamProjects();
+		const fileHashes = new Map<string, string[]>();
 
-		for (const project of teamProjects) {
-			const projectFiles = await this.makeRequest(
-				`/projects/${project.id}/files`
-			);
+		try {
+			const teamProjects = await this.getTeamProjects();
 
-			for (const file of projectFiles.files || []) {
-				// Figma doesn't provide file sizes, estimate based on complexity
-				const sizeMb = 5; // Rough estimate
-				const hash = this.generateFileHash(file.name, sizeMb);
+			for (const project of teamProjects) {
+				const projectFiles = await this.makeRequest(
+					`/projects/${project.id}/files`
+				);
 
-				files.push({
-					name: file.name,
-					sizeMb,
-					type: "OTHER",
-					source: "FIGMA",
-					mimeType: "application/figma",
-					fileHash: hash,
-					url: `https://www.figma.com/file/${file.key}`,
-					path: `/${project.name}/${file.name}`,
-					lastAccessed: new Date(file.last_modified),
-					ownerEmail: undefined,
-					isPubliclyShared: false,
-					sharedWith: [],
-					isDuplicate: false,
-					duplicateGroup: undefined,
-				});
+				for (const file of projectFiles.files || []) {
+					// Figma doesn't provide file sizes, estimate based on complexity
+					const sizeMb = 5; // Rough estimate for design files
+					const hash = this.generateFileHash(file.name, sizeMb);
+
+					// Track duplicates (by name similarity)
+					if (!fileHashes.has(hash)) {
+						fileHashes.set(hash, []);
+					}
+					fileHashes.get(hash)!.push(file.key);
+
+					const isDuplicate = fileHashes.get(hash)!.length > 1;
+
+					files.push({
+						name: file.name,
+						sizeMb,
+						type: "OTHER", // Figma files are design files
+						source: "FIGMA",
+						mimeType: "application/figma",
+						fileHash: hash,
+						url: `https://www.figma.com/file/${file.key}`,
+						path: `/${project.name}/${file.name}`,
+						lastAccessed: new Date(file.last_modified),
+						ownerEmail: undefined, // Figma API doesn't expose owner easily
+						isPubliclyShared: false, // Would need to check file permissions separately
+						sharedWith: [],
+						isDuplicate,
+						duplicateGroup: isDuplicate ? hash : undefined,
+					});
+				}
 			}
+		} catch (error) {
+			console.error("Error fetching Figma files:", error);
 		}
 
 		return files;
 	}
 
-	private async getTeamProjects(): Promise<any[]> {
-		const me = await this.makeRequest("/me");
-		const teamId = me.team_id;
+	private async getTeamProjects(): Promise<FigmaProject[]> {
+		try {
+			const me = await this.makeRequest("/me");
+			const teamId = me.team_id;
 
-		if (!teamId) return [];
+			if (!teamId) {
+				return [];
+			}
 
-		const response = await this.makeRequest(`/teams/${teamId}/projects`);
-		return response.projects || [];
+			const response = await this.makeRequest(
+				`/teams/${teamId}/projects`
+			);
+			return response.projects || [];
+		} catch (error) {
+			console.error("Error fetching Figma team projects:", error);
+			return [];
+		}
 	}
 
 	private async fetchUsers(): Promise<UserData[]> {
-		const me = await this.makeRequest("/me");
-		const teamId = me.team_id;
+		try {
+			const me = await this.makeRequest("/me");
+			const teamId = me.team_id;
 
-		if (!teamId) {
+			if (!teamId) {
+				// Personal account - return current user
+				return [
+					{
+						email: me.email,
+						name: me.handle,
+						role: "owner",
+						lastActive: undefined,
+						isGuest: false,
+						licenseType: "full",
+					},
+				];
+			}
+
+			// For team accounts, Figma API has limited user listing
+			// This would require organization-level API access
 			return [
 				{
 					email: me.email,
 					name: me.handle,
-					role: "owner",
+					role: "user",
 					lastActive: undefined,
 					isGuest: false,
 					licenseType: "full",
 				},
 			];
+		} catch (error) {
+			console.error("Error fetching Figma users:", error);
+			return [];
 		}
-
-		// Figma API doesn't provide team member list in basic plan
-		return [
-			{
-				email: me.email,
-				name: me.handle,
-				role: "user",
-				lastActive: undefined,
-				isGuest: false,
-				licenseType: "full",
-			},
-		];
 	}
 
-	private async makeRequest(endpoint: string): Promise<any> {
+	private async makeRequest(
+		endpoint: string,
+		options: RequestInit = {}
+	): Promise<any> {
 		const response = await fetch(`${this.baseUrl}${endpoint}`, {
+			...options,
 			headers: {
 				"X-Figma-Token": this.config.accessToken,
+				"Content-Type": "application/json",
+				...options.headers,
 			},
 		});
 
 		if (!response.ok) {
-			throw new Error(`Figma API error: ${response.statusText}`);
+			const errorText = await response.text();
+			throw new Error(
+				`Figma API error (${response.status}): ${errorText || response.statusText}`
+			);
 		}
 
 		return response.json();
@@ -140,5 +192,58 @@ export class FigmaConnector extends BaseConnector {
 			.createHash("sha256")
 			.update(`${name}-${size}`)
 			.digest("hex");
+	}
+
+	// ============================================================================
+	// ANALYSIS METHODS
+	// ============================================================================
+
+	async identifyDuplicateFiles(): Promise<FileData[]> {
+		const files = await this.fetchFiles();
+		return files.filter((f) => f.isDuplicate);
+	}
+
+	async identifyOldFiles(daysOld: number = 365): Promise<FileData[]> {
+		const files = await this.fetchFiles();
+		const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+
+		return files.filter(
+			(f) => f.lastAccessed && f.lastAccessed < cutoffDate
+		);
+	}
+
+	// ============================================================================
+	// EXECUTION METHODS
+	// ============================================================================
+
+	/**
+	 * Delete a Figma file
+	 * Note: Figma API doesn't support file deletion via API
+	 * This would need to be done manually or through browser automation
+	 */
+	async deleteFile(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void externalId;
+		void _metadata;
+		throw new Error(
+			"Figma API does not support file deletion. Files must be deleted manually through the Figma interface."
+		);
+	}
+
+	/**
+	 * Update file permissions
+	 * Note: Figma API has limited permission management
+	 */
+	async updatePermissions(
+		externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void externalId;
+		void _metadata;
+		throw new Error(
+			"Figma API has limited permission management. Use Figma's web interface for permission changes."
+		);
 	}
 }

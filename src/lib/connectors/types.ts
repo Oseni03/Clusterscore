@@ -5,6 +5,7 @@ export interface ConnectorConfig {
 	accessToken: string;
 	refreshToken?: string;
 	organizationId: string;
+	expiresAt?: Date;
 	metadata?: Record<string, any>;
 }
 
@@ -76,44 +77,200 @@ export abstract class BaseConnector {
 		this.source = source;
 	}
 
+	// ============================================================================
+	// ABSTRACT METHODS - Must be implemented by all connectors
+	// ============================================================================
+
 	abstract fetchAuditData(): Promise<AuditData>;
 	abstract testConnection(): Promise<boolean>;
 	abstract refreshToken(): Promise<string>;
 
+	// ============================================================================
+	// OPTIONAL EXECUTION METHODS - Override as needed per connector
+	// ============================================================================
+
+	/**
+	 * Delete a file from the service.
+	 * @param externalId File ID in the external service
+	 * @param metadata Additional file metadata (path, name, etc.)
+	 */
+	async deleteFile(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`deleteFile not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Update permissions on a file (typically restricting access).
+	 * @param externalId File ID in the external service
+	 * @param metadata File metadata including current sharing info
+	 */
+	async updatePermissions(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`updatePermissions not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Archive a channel or workspace.
+	 * @param externalId Channel/workspace ID
+	 * @param metadata Channel metadata (name, member count, etc.)
+	 */
+	async archiveChannel(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`archiveChannel not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Remove a guest user from the workspace.
+	 * @param externalId Guest user email or ID
+	 * @param metadata User metadata (name, role, etc.)
+	 */
+	async removeGuest(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`removeGuest not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Disable or suspend a user account.
+	 * @param externalId User email or ID
+	 * @param metadata User metadata (name, role, last active, etc.)
+	 */
+	async disableUser(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`disableUser not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Revoke a specific access token or session.
+	 * @param externalId Token ID or session ID
+	 * @param metadata Token metadata (scopes, created date, etc.)
+	 */
+	async revokeAccess(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`revokeAccess not implemented for ${this.source}`);
+	}
+
+	/**
+	 * Remove a license from a user.
+	 * @param externalId User email or ID
+	 * @param metadata License metadata (type, cost, etc.)
+	 */
+	async removeLicense(
+		_externalId: string,
+		_metadata: Record<string, any>
+	): Promise<void> {
+		void _externalId;
+		void _metadata;
+		throw new Error(`removeLicense not implemented for ${this.source}`);
+	}
+
+	// ============================================================================
+	// HELPER METHODS - Available to all connectors
+	// ============================================================================
+
 	protected async handleApiError(error: any): Promise<ConnectorError> {
-		// Common error handling logic
+		const statusCode =
+			error.status || error.statusCode || error.response?.status;
+		const isRetryable = statusCode >= 500 || statusCode === 429;
+
 		return {
-			code: error.code || "UNKNOWN_ERROR",
-			message: error.message || "An unknown error occurred",
-			retryable: error.status >= 500 || error.code === "RATE_LIMIT",
+			code: error.code || `HTTP_${statusCode}` || "UNKNOWN_ERROR",
+			message:
+				error.message ||
+				error.response?.data?.message ||
+				"An unknown error occurred",
+			retryable: isRetryable,
 		};
 	}
 
 	protected inferFileType(mimeType: string): FileType {
-		if (mimeType.startsWith("image/")) return "IMAGE";
-		if (mimeType.startsWith("video/")) return "VIDEO";
-		if (mimeType.startsWith("audio/")) return "MUSIC";
+		const mime = mimeType.toLowerCase();
+
+		if (mime.startsWith("image/")) return "IMAGE";
+		if (mime.startsWith("video/")) return "VIDEO";
+		if (mime.startsWith("audio/")) return "MUSIC";
 		if (
-			mimeType.includes("pdf") ||
-			mimeType.includes("document") ||
-			mimeType.includes("text") ||
-			mimeType.includes("spreadsheet") ||
-			mimeType.includes("presentation")
-		)
+			mime.includes("pdf") ||
+			mime.includes("document") ||
+			mime.includes("text") ||
+			mime.includes("spreadsheet") ||
+			mime.includes("presentation") ||
+			mime.includes("word") ||
+			mime.includes("excel") ||
+			mime.includes("powerpoint")
+		) {
 			return "DOCUMENT";
+		}
 		if (
-			mimeType.includes("zip") ||
-			mimeType.includes("rar") ||
-			mimeType.includes("tar") ||
-			mimeType.includes("7z")
-		)
+			mime.includes("zip") ||
+			mime.includes("rar") ||
+			mime.includes("tar") ||
+			mime.includes("7z") ||
+			mime.includes("gz") ||
+			mime.includes("bz2")
+		) {
 			return "ARCHIVE";
-		if (mimeType.includes("database") || mimeType.includes("sql"))
+		}
+		if (
+			mime.includes("database") ||
+			mime.includes("sql") ||
+			mime.includes("db")
+		) {
 			return "DATABASE";
+		}
+
 		return "OTHER";
 	}
 
 	protected bytesToMb(bytes: number): number {
+		if (bytes === 0) return 0;
 		return Math.round((bytes / (1024 * 1024)) * 100) / 100;
+	}
+
+	protected mbToGb(mb: number): number {
+		if (mb === 0) return 0;
+		return Math.round((mb / 1024) * 100) / 100;
+	}
+
+	/**
+	 * Check if the access token is expired or about to expire
+	 */
+	protected isTokenExpired(): boolean {
+		if (!this.config.expiresAt) return false;
+		const expiryBuffer = 5 * 60 * 1000; // 5 minutes
+		return this.config.expiresAt.getTime() - Date.now() < expiryBuffer;
+	}
+
+	/**
+	 * Automatically refresh token if needed before making API calls
+	 */
+	protected async ensureValidToken(): Promise<void> {
+		if (this.isTokenExpired() && this.config.refreshToken) {
+			const newToken = await this.refreshToken();
+			this.config.accessToken = newToken;
+		}
 	}
 }
