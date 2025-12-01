@@ -100,7 +100,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`deleteFile not implemented for ${this.source}`);
+		throw new Error(
+			`File deletion is not supported for ${this.source}. Please contact support if you need this feature.`
+		);
 	}
 
 	/**
@@ -114,7 +116,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`updatePermissions not implemented for ${this.source}`);
+		throw new Error(
+			`Permission updates are not supported for ${this.source}. Please manage permissions directly in the service.`
+		);
 	}
 
 	/**
@@ -128,7 +132,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`archiveChannel not implemented for ${this.source}`);
+		throw new Error(
+			`Channel archival is not supported for ${this.source}. Please archive channels directly in the service.`
+		);
 	}
 
 	/**
@@ -142,7 +148,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`removeGuest not implemented for ${this.source}`);
+		throw new Error(
+			`Guest removal is not supported for ${this.source}. Please remove guests directly in the service.`
+		);
 	}
 
 	/**
@@ -156,7 +164,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`disableUser not implemented for ${this.source}`);
+		throw new Error(
+			`User deactivation is not supported for ${this.source}. Please disable users directly in the service.`
+		);
 	}
 
 	/**
@@ -170,7 +180,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`revokeAccess not implemented for ${this.source}`);
+		throw new Error(
+			`Access revocation is not supported for ${this.source}. Please revoke access directly in the service settings.`
+		);
 	}
 
 	/**
@@ -184,7 +196,9 @@ export abstract class BaseConnector {
 	): Promise<void> {
 		void _externalId;
 		void _metadata;
-		throw new Error(`removeLicense not implemented for ${this.source}`);
+		throw new Error(
+			`License removal is not supported for ${this.source}. Please manage licenses directly in the service.`
+		);
 	}
 
 	// ============================================================================

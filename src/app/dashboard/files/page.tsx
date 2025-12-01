@@ -36,7 +36,7 @@ import {
 	Search,
 	Filter,
 	FileText,
-	Image,
+	Image as ImageIcon,
 	Film,
 	Archive,
 	Database,
@@ -59,10 +59,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useFiles } from "@/hooks/use-files";
 import { FileType, ToolSource } from "@prisma/client";
+import Image from "next/image";
 
 const FILE_TYPE_ICONS = {
 	DOCUMENT: FileText,
-	IMAGE: Image,
+	IMAGE: ImageIcon,
 	VIDEO: Film,
 	MUSIC: Music,
 	ARCHIVE: Archive,
@@ -71,14 +72,16 @@ const FILE_TYPE_ICONS = {
 };
 
 const SOURCE_ICONS: Record<ToolSource, string> = {
-	SLACK: "💬",
-	GOOGLE: "🔍",
-	MICROSOFT: "🪟",
-	NOTION: "📝",
-	DROPBOX: "📦",
-	FIGMA: "🎨",
-	LINEAR: "📐",
-	JIRA: "🔷",
+	SLACK: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/slack.svg",
+	GOOGLE: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/google.svg",
+	MICROSOFT:
+		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg",
+	NOTION: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/notion.svg",
+	DROPBOX:
+		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/dropbox.svg",
+	FIGMA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/figma.svg",
+	LINEAR: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linear.svg",
+	JIRA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jira.svg",
 };
 
 export default function FilesPage() {
@@ -326,7 +329,16 @@ export default function FilesPage() {
 									</SelectItem>
 									{Object.keys(SOURCE_ICONS).map((source) => (
 										<SelectItem key={source} value={source}>
-											{SOURCE_ICONS[source as ToolSource]}{" "}
+											<Image
+												src={
+													SOURCE_ICONS[
+														source as ToolSource
+													]
+												}
+												alt={`${source} icon`}
+												width={20}
+												height={20}
+											/>
 											{source}
 										</SelectItem>
 									))}
@@ -483,13 +495,16 @@ export default function FilesPage() {
 													</Badge>
 												</TableCell>
 												<TableCell>
-													<span className="text-lg">
-														{
+													<Image
+														src={
 															SOURCE_ICONS[
-																file.source
+																file.source as ToolSource
 															]
 														}
-													</span>
+														alt={`${file.source} icon`}
+														width={20}
+														height={20}
+													/>
 												</TableCell>
 												<TableCell className="text-muted-foreground text-sm">
 													{formatDate(
