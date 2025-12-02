@@ -4,11 +4,15 @@ import { customSession, organization, magicLink } from "better-auth/plugins";
 import { admin, member } from "./auth/permissions";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
-import { getActiveOrganization } from "@/server/organizations";
+import {
+	createOrganization,
+	getActiveOrganization,
+} from "@/server/organizations";
 import { polar, checkout, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 import { handleSubscriptionWebhook } from "@/server/polar";
 import { SUBSCRIPTION_PLANS } from "./utils";
+import { createFreeSubscription } from "@/server/subscription";
 import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
@@ -50,6 +54,24 @@ export const auth = betterAuth({
 		errorURL: "/auth/error",
 	},
 	databaseHooks: {
+		user: {
+			create: {
+				after: async (user) => {
+					// Create a personal organization for the user
+					const { data, success } = await createOrganization(
+						user.id,
+						{
+							name: user.email.split("@")[0],
+							slug: user.email.split("@")[0].toLowerCase(),
+						}
+					);
+
+					if (success && data) {
+						await createFreeSubscription(data.id);
+					}
+				},
+			},
+		},
 		session: {
 			create: {
 				before: async (session) => {
