@@ -33,8 +33,6 @@ export default function LandingPage() {
 							alt="Clutterscore Logo"
 							width={32}
 							height={32}
-							width={32}
-							height={32}
 							className="h-8 w-8"
 						/>
 						<span className="font-display font-bold text-xl tracking-tight">
