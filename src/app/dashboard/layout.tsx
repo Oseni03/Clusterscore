@@ -9,12 +9,14 @@ import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Member, Organization } from "@/types";
 import { DashboardStoreProvider } from "@/zustand/providers/dashboard-store-provider";
+import { useRouter } from "next/navigation";
 
 export default function Page({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const router = useRouter();
 	const {
 		setAdmin,
 		setOrganizations,
@@ -52,9 +54,13 @@ export default function Page({
 					updateSubscription(session.subscription);
 				}
 			} else {
-				setActiveOrganization(
-					session?.activeOrganizationId || organizations![0].id
-				);
+				if (session?.activeOrganizationId || organizations) {
+					setActiveOrganization(
+						session?.activeOrganizationId || organizations![0].id
+					);
+				} else {
+					router.push("/onboarding");
+				}
 			}
 
 			if (organizations) {
@@ -64,6 +70,7 @@ export default function Page({
 
 		fetchActiveOrg();
 	}, [
+		router,
 		session,
 		organizations,
 		setOrganizationData,

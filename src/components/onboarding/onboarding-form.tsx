@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Building2, Sparkles } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +26,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
+
 import Logo from "@/components/logo";
 
 const formSchema = z.object({
@@ -84,9 +86,7 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 
 			const response = await fetch("/api/organizations", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					name: values.name,
 					slug: values.slug,
@@ -116,20 +116,19 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 	}
 
 	return (
-		<Card className="w-full max-w-lg border-muted shadow-lg">
-			<CardHeader className="space-y-4 text-center">
-				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-					<Logo className="h-6 w-6" />
+		<Card className="border-border/80 shadow-xl">
+			<CardHeader className="text-center">
+				<div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+					<Logo className="h-8 w-8" />
 				</div>
-				<div className="space-y-2">
-					<CardTitle className="text-2xl font-bold">
-						Welcome to Clusterscore! 🎉
-					</CardTitle>
-					<CardDescription className="text-base">
-						Let&apos;s create your first workspace to get started
-					</CardDescription>
-				</div>
+				<CardTitle className="text-3xl font-bold">
+					Welcome to Clusterscore!
+				</CardTitle>
+				<CardDescription className="text-base mt-2">
+					Let’s create your first workspace to get started
+				</CardDescription>
 			</CardHeader>
+
 			<CardContent>
 				<Form {...form}>
 					<form
@@ -147,6 +146,7 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 											<Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 											<Input
 												placeholder="Acme Inc."
+												className="pl-10"
 												{...field}
 												onChange={(e) => {
 													field.onChange(e);
@@ -154,13 +154,11 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 														e.target.value
 													);
 												}}
-												className="pl-9"
 											/>
 										</div>
 									</FormControl>
 									<FormDescription>
-										This is your workspace&apos;s visible
-										name
+										This is your workspace’s display name
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -178,36 +176,35 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 											<Sparkles className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 											<Input
 												placeholder="acme-inc"
+												className="pl-10 font-mono text-sm"
 												{...field}
-												className="pl-9 font-mono text-sm"
 											/>
 										</div>
 									</FormControl>
 									<FormDescription>
-										Used in your workspace URL. Only
-										lowercase letters, numbers, and hyphens.
+										Used in your workspace URL (lowercase,
+										numbers, hyphens only)
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
 
-						<div className="rounded-lg border border-muted bg-muted/50 p-4">
-							<p className="text-sm text-muted-foreground">
-								<span className="font-semibold text-foreground">
-									What&apos;s a workspace?
-								</span>
-								<br />A workspace is where your team
-								collaborates. You can invite members, manage
-								integrations, and track your SaaS tools all in
-								one place.
+						<div className="rounded-xl border bg-muted/40 p-5 text-sm">
+							<p className="font-semibold text-foreground">
+								What’s a workspace?
+							</p>
+							<p className="mt-2 text-muted-foreground">
+								A workspace is where your team collaborates. You
+								can invite members, connect integrations, and
+								manage all your SaaS tools in one place.
 							</p>
 						</div>
 
 						<Button
 							type="submit"
-							className="w-full"
 							size="lg"
+							className="w-full"
 							disabled={isLoading}
 						>
 							{isLoading ? (

@@ -13,16 +13,16 @@ export default async function OnboardingPage() {
 		redirect("/login");
 	}
 
-	// Check if user already has an organization
 	const organization = await getActiveOrganization(session.user.id);
-
 	if (organization) {
 		redirect("/dashboard");
 	}
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-			<OnboardingForm user={session.user} />
+		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background px-4 py-12">
+			<div className="w-full max-w-lg">
+				<OnboardingForm user={session.user} />
+			</div>
 		</div>
 	);
 }
