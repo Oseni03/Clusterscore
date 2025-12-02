@@ -89,18 +89,16 @@ export default function OrganizationCard() {
 		setIsLoading(true);
 
 		try {
-			const { data, success } = await deleteOrganization(
-				activeOrganization.id
-			);
+			const { success } = await deleteOrganization(activeOrganization.id);
 
 			if (!isMountedRef.current) return;
 
-			if (!success || !data) {
+			if (!success) {
 				toast.error("Failed to delete workspace", { id: toastId });
 				return;
 			}
 
-			removeOrganization(data.id);
+			removeOrganization(activeOrganization.id);
 			toast.success("Workspace deleted successfully", { id: toastId });
 			setDeleteDialogOpen(false);
 		} catch (error) {
