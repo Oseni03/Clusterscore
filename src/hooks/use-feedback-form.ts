@@ -6,11 +6,31 @@ import { toast } from "sonner";
 import { submitFeedback } from "@/server/feedback";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export type FeedbackFormValues = {
 	title: string;
 	details: string;
 };
+
+function formatTelegramFeedback(
+	appName: string,
+	userEmail: string,
+	title: string,
+	details: string
+) {
+	return `
+<b>📝 New Feedback Received</b>
+
+<b>App:</b> ${appName}
+<b>User:</b> ${userEmail}
+
+<b>Title:</b> ${title}
+
+<b>Details:</b>
+<pre>${details}</pre>
+  `;
+}
 
 export function useFeedbackForm() {
 	const { data: session } = authClient.useSession();
@@ -29,6 +49,7 @@ export function useFeedbackForm() {
 		if (!session?.user || !activeOrganization) {
 			throw new Error("User must be authenticated to submit feedback.");
 		}
+
 		setLoading(true);
 
 		try {
@@ -42,6 +63,15 @@ export function useFeedbackForm() {
 			);
 
 			if (result.success) {
+				// --- SEND FEEDBACK TO TELEGRAM ---
+				const formatted = formatTelegramFeedback(
+					`Clusterscore - ${activeOrganization.name}`,
+					session.user.email!,
+					values.title,
+					values.details
+				);
+				await sendTelegramMessage(formatted);
+
 				toast.success("Thanks for your feedback!");
 				form.reset();
 			} else {
