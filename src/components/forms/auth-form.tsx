@@ -29,11 +29,10 @@ const formSchema = z.object({
 
 const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 	const pathname = usePathname();
-	const searchParams = useSearchParams();
-	const router = useRouter();
-
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+
+	const isLogin = pathname === "/login";
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -47,13 +46,9 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 			setGoogleLoading(true);
 			await authClient.signIn.social({
 				provider: "google",
-				// callbackURL: "/dashboard",
+				callbackURL: isLogin ? "/dashboard" : "/onboarding",
 			});
 			toast.success("Redirecting to Google sign-in...");
-
-			const returnUrl = searchParams.get("callbackUrl") || "/dashboard";
-			// After successful login, redirect to the return URL
-			router.push(returnUrl);
 		} catch (error) {
 			console.error("Error during Google sign-in:", error);
 			toast.error("Failed to sign in with Google");
@@ -68,13 +63,11 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 
 			await authClient.signIn.magicLink({
 				email: values.email,
-				// callbackURL: "/dashboard",
-				newUserCallbackURL: "/dashboard",
+				callbackURL: isLogin ? "/dashboard" : undefined,
+				newUserCallbackURL: "/onboarding",
 			});
+
 			toast.success("Magic link sent! Check your email.");
-			const returnUrl = searchParams.get("callbackUrl") || "/dashboard";
-			// After successful login, redirect to the return URL
-			router.push(returnUrl);
 		} catch (error) {
 			toast.error("Failed to send magic link");
 			console.error("Magic link sign-in error:", error);
@@ -82,8 +75,6 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 			setIsLoading(false);
 		}
 	}
-
-	const isLogin = pathname === "/login";
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -106,12 +97,12 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 							{isLogin ? (
 								<div className="text-center text-sm">
 									Don&apos;t have an account?{" "}
-									<a
+									<Link
 										href="/signup"
 										className="underline underline-offset-4"
 									>
 										Sign up
-									</a>
+									</Link>
 								</div>
 							) : (
 								<div className="text-center text-sm">
@@ -171,13 +162,14 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
 									viewBox="0 0 24 24"
+									className="mr-2 h-4 w-4"
 								>
 									<path
 										d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
 										fill="currentColor"
 									/>
 								</svg>
-								Continue with Google{" "}
+								Continue with Google
 								{googleLoading && (
 									<Loader2 className="ml-2 h-4 w-4 animate-spin" />
 								)}
@@ -186,10 +178,22 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 					</div>
 				</form>
 			</Form>
-			<div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+			<div className="text-muted-foreground text-center text-xs text-balance">
 				By clicking continue, you agree to our{" "}
-				<a href="/terms">Terms of Service</a> and{" "}
-				<a href="/privacy-policy">Privacy Policy</a>.
+				<Link
+					href="/terms"
+					className="underline underline-offset-4 hover:text-primary"
+				>
+					Terms of Service
+				</Link>{" "}
+				and{" "}
+				<a
+					href="/privacy-policy"
+					className="underline underline-offset-4 hover:text-primary"
+				>
+					Privacy Policy
+				</a>
+				.
 			</div>
 		</div>
 	);
@@ -199,42 +203,34 @@ const AuthLoading = ({ className, ...props }: React.ComponentProps<"div">) => {
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
 			<div className="flex flex-col gap-6">
-				{/* Header Section */}
 				<div className="flex flex-col items-center gap-2">
 					<div className="flex flex-col items-center gap-2 font-medium">
 						<div className="flex size-8 items-center justify-center rounded-md">
 							<Logo className="size-6" />
 						</div>
 					</div>
-					<Skeleton className="h-7 w-48" /> {/* Title skeleton */}
-					<Skeleton className="h-4 w-56" /> {/* Subtitle skeleton */}
+					<Skeleton className="h-7 w-48" />
+					<Skeleton className="h-4 w-56" />
 				</div>
 
-				{/* Form Fields Section */}
 				<div className="flex flex-col gap-6">
-					{/* Email Field */}
 					<div className="space-y-2">
-						<Skeleton className="h-4 w-12" /> {/* Label skeleton */}
-						<Skeleton className="h-10 w-full" />{" "}
-						{/* Input skeleton */}
+						<Skeleton className="h-4 w-12" />
+						<Skeleton className="h-10 w-full" />
 					</div>
 
-					{/* Submit Button */}
 					<Skeleton className="h-10 w-full" />
 				</div>
 
-				{/* Divider */}
 				<div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
 					<span className="bg-background text-muted-foreground relative z-10 px-2">
 						Or
 					</span>
 				</div>
 
-				{/* Google Button */}
 				<Skeleton className="h-10 w-full" />
 			</div>
 
-			{/* Footer Text */}
 			<div className="text-center">
 				<Skeleton className="mx-auto h-4 w-64" />
 				<Skeleton className="mx-auto mt-1 h-4 w-48" />
