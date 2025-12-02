@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 import { Session, User } from "better-auth";
 
 export interface AuthUser extends User {
-	role?: string;
+	role?: string | null;
 	organizationId: string;
 }
 
