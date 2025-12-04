@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePlaybooksStore } from "@/zustand/providers/playbooks-store-provider";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { PlaybookWithItems, PlaybooksListResponse } from "@/types/audit";
 import { PlaybookStatus, ImpactType, ToolSource } from "@prisma/client";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { showUpgradeToast } from "@/components/upgrade-toast";
 
 export function usePlaybooks() {
+	const router = useRouter();
 	const playbooks = usePlaybooksStore((state) => state.playbooks);
 	const selectedPlaybook = usePlaybooksStore(
 		(state) => state.selectedPlaybook
@@ -18,6 +22,12 @@ export function usePlaybooks() {
 		(state) => state.setSelectedPlaybook
 	);
 	const setFilters = usePlaybooksStore((state) => state.setFilters);
+
+	// Get subscription tier
+	const activeOrganization = useOrganizationStore(
+		(state) => state.activeOrganization
+	);
+	const subscriptionTier = activeOrganization?.subscriptionTier || "free";
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [isExecuting, setIsExecuting] = useState<string | null>(null);
@@ -59,6 +69,16 @@ export function usePlaybooks() {
 
 	const approvePlaybook = useCallback(
 		async (playbookId: string) => {
+			// 🚨 SUBSCRIPTION CHECK: Free tier cannot approve/execute playbooks
+			if (subscriptionTier === "free") {
+				showUpgradeToast(
+					"Upgrade Required",
+					"Playbook execution is only available on Pro and Enterprise plans. Upgrade to unlock one-click cleanup automation with approval workflows.",
+					router
+				);
+				throw new Error("Subscription upgrade required");
+			}
+
 			try {
 				const response = await fetch(
 					`/api/playbooks/${playbookId}/approve`,
@@ -76,13 +96,16 @@ export function usePlaybooks() {
 				toast.success("Playbook approved");
 				await loadPlaybooks();
 			} catch (err) {
-				toast.error(
-					(err as Error).message || "Failed to approve playbook"
-				);
+				const errorMessage =
+					(err as Error).message || "Failed to approve playbook";
+
+				if (!errorMessage.includes("Subscription upgrade required")) {
+					toast.error(errorMessage);
+				}
 				throw err;
 			}
 		},
-		[loadPlaybooks]
+		[loadPlaybooks, subscriptionTier, router]
 	);
 
 	const dismissPlaybook = useCallback(
@@ -115,6 +138,16 @@ export function usePlaybooks() {
 
 	const executePlaybook = useCallback(
 		async (playbookId: string) => {
+			// 🚨 SUBSCRIPTION CHECK: Free tier cannot execute playbooks
+			if (subscriptionTier === "free") {
+				showUpgradeToast(
+					"Upgrade Required",
+					"Playbook execution is only available on Pro and Enterprise plans. Upgrade to unlock automated cleanups, recurring audits, and undo actions.",
+					router
+				);
+				throw new Error("Subscription upgrade required");
+			}
+
 			setIsExecuting(playbookId);
 			try {
 				const response = await fetch(
@@ -133,15 +166,18 @@ export function usePlaybooks() {
 				toast.success("Playbook executed successfully");
 				await loadPlaybooks();
 			} catch (err) {
-				toast.error(
-					(err as Error).message || "Failed to execute playbook"
-				);
+				const errorMessage =
+					(err as Error).message || "Failed to execute playbook";
+
+				if (!errorMessage.includes("Subscription upgrade required")) {
+					toast.error(errorMessage);
+				}
 				throw err;
 			} finally {
 				setIsExecuting(null);
 			}
 		},
-		[loadPlaybooks]
+		[loadPlaybooks, subscriptionTier, router]
 	);
 
 	const getFilteredPlaybooks = useCallback(() => {
@@ -222,6 +258,7 @@ export function usePlaybooks() {
 		isLoading,
 		isExecuting,
 		error,
+		subscriptionTier,
 
 		// Actions
 		setSelectedPlaybook,

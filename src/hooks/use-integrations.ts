@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { ToolSource, IntegrationSyncStatus } from "@prisma/client";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import { showUpgradeToast } from "@/components/upgrade-toast";
 
 interface Integration {
 	id: string;
@@ -18,10 +21,19 @@ interface Integration {
 	metadata: any;
 }
 
+const FREE_TIER_INTEGRATION_LIMIT = 3;
+
 export function useIntegrations() {
+	const router = useRouter();
 	const [integrations, setIntegrations] = useState<Integration[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+
+	// Get subscription tier
+	const activeOrganization = useOrganizationStore(
+		(state) => state.activeOrganization
+	);
+	const subscriptionTier = activeOrganization?.subscriptionTier || "free";
 
 	const fetchIntegrations = async () => {
 		try {
@@ -48,6 +60,22 @@ export function useIntegrations() {
 	}, []);
 
 	const connectIntegration = (source: ToolSource) => {
+		// 🚨 SUBSCRIPTION CHECK: Free tier limited to 3 integrations
+		if (subscriptionTier === "free") {
+			const activeIntegrations = integrations.filter(
+				(integration) => integration.isActive
+			);
+
+			if (activeIntegrations.length >= FREE_TIER_INTEGRATION_LIMIT) {
+				showUpgradeToast(
+					"Integration Limit Reached",
+					`Free tier is limited to ${FREE_TIER_INTEGRATION_LIMIT} integrations. Upgrade to Pro for unlimited integrations, automated cleanups, and advanced features.`,
+					router
+				);
+				return;
+			}
+		}
+
 		// Redirect to OAuth flow
 		window.location.href = `/api/oauth/${source.toLowerCase()}/authorize`;
 	};
@@ -118,14 +146,51 @@ export function useIntegrations() {
 		}
 	};
 
+	// Helper to check if user can add more integrations
+	const canAddIntegration = () => {
+		if (subscriptionTier !== "free") return true;
+
+		const activeIntegrations = integrations.filter(
+			(integration) => integration.isActive
+		);
+		return activeIntegrations.length < FREE_TIER_INTEGRATION_LIMIT;
+	};
+
+	// Helper to get remaining integration slots for free tier
+	const getRemainingIntegrationSlots = () => {
+		if (subscriptionTier !== "free") return null;
+
+		const activeIntegrations = integrations.filter(
+			(integration) => integration.isActive
+		);
+		return Math.max(
+			0,
+			FREE_TIER_INTEGRATION_LIMIT - activeIntegrations.length
+		);
+	};
+
+	// Helper to get active integrations count
+	const getActiveIntegrationsCount = () => {
+		return integrations.filter((integration) => integration.isActive)
+			.length;
+	};
+
 	return {
 		integrations,
 		isLoading,
 		error,
+		subscriptionTier,
 		connectIntegration,
 		disconnectIntegration,
 		refreshToken,
 		registerWebhook,
 		refetch: fetchIntegrations,
+
+		// Subscription helpers
+		canAddIntegration,
+		getRemainingIntegrationSlots,
+		getActiveIntegrationsCount,
+		integrationLimit:
+			subscriptionTier === "free" ? FREE_TIER_INTEGRATION_LIMIT : null,
 	};
 }

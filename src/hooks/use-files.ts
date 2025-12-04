@@ -2,10 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useFilesStore } from "@/zustand/providers/files-store-provider";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { FilesListResponse } from "@/types/audit";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { showUpgradeToast } from "@/components/upgrade-toast";
+
+// Subscription upgrade toast helper
 
 export function useFiles() {
+	const router = useRouter();
 	const allFiles = useFilesStore((state) => state.files);
 	const filters = useFilesStore((state) => state.filters);
 	const pagination = useFilesStore((state) => state.pagination);
@@ -13,6 +19,12 @@ export function useFiles() {
 	const setFiles = useFilesStore((state) => state.setFiles);
 	const setFilters = useFilesStore((state) => state.setFilters);
 	const setPagination = useFilesStore((state) => state.setPagination);
+
+	// Get subscription tier
+	const activeOrganization = useOrganizationStore(
+		(state) => state.activeOrganization
+	);
+	const subscriptionTier = activeOrganization?.subscriptionTier || "free";
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -64,7 +76,7 @@ export function useFiles() {
 			setPagination({
 				total: data.pagination.total,
 				page: data.pagination.page,
-				limit: data.pagination.limit ?? limit, // preserve limit if not returned
+				limit: data.pagination.limit ?? limit,
 			});
 		} catch (err) {
 			const errorMsg = (err as Error).message || "Failed to load files";
@@ -123,6 +135,16 @@ export function useFiles() {
 
 	const deleteFile = useCallback(
 		async (fileId: string) => {
+			// 🚨 SUBSCRIPTION CHECK: Free tier cannot delete files
+			if (subscriptionTier === "free") {
+				showUpgradeToast(
+					"Upgrade Required",
+					"File deletion is only available on Pro and Enterprise plans. Upgrade to unlock automated cleanups and one-click actions.",
+					router
+				);
+				throw new Error("Subscription upgrade required");
+			}
+
 			try {
 				const response = await fetch(`/api/files/${fileId}`, {
 					method: "DELETE",
@@ -145,15 +167,36 @@ export function useFiles() {
 					total: pagination.total - 1,
 				});
 
-				toast.success("File deleted successfully");
+				toast.success(
+					data.externalDeletionSuccess
+						? "File deleted from platform and database"
+						: data.message || "File deleted successfully"
+				);
 			} catch (err) {
-				toast.error((err as Error).message || "Failed to delete file");
+				const errorMessage =
+					(err as Error).message || "Failed to delete file";
+
+				// Don't show duplicate error toast if subscription check already showed one
+				if (!errorMessage.includes("Subscription upgrade required")) {
+					toast.error(errorMessage);
+				}
+
 				// Refetch to ensure consistency on error
-				await fetchFiles();
+				if (!errorMessage.includes("Subscription upgrade required")) {
+					await fetchFiles();
+				}
 				throw err;
 			}
 		},
-		[allFiles, pagination.total, setFiles, setPagination, fetchFiles]
+		[
+			allFiles,
+			pagination.total,
+			setFiles,
+			setPagination,
+			fetchFiles,
+			subscriptionTier,
+			router,
+		]
 	);
 
 	const exportFiles = useCallback(async () => {
@@ -201,6 +244,7 @@ export function useFiles() {
 		pagination,
 		isLoading,
 		error,
+		subscriptionTier,
 
 		// Actions
 		setFilters,
