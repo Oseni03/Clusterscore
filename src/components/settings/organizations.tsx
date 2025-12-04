@@ -67,20 +67,6 @@ const OrganizationSkeleton = () => (
 	</Card>
 );
 
-// Plan badge styling
-const getPlanBadgeVariant = (tier: string) => {
-	switch (tier) {
-		case "free":
-			return "secondary";
-		case "pro":
-			return "default";
-		case "enterprise":
-			return "default";
-		default:
-			return "secondary";
-	}
-};
-
 const getPlanIcon = (tier: string) => {
 	switch (tier) {
 		case "pro":
@@ -152,7 +138,7 @@ export default function OrganizationCard() {
 		} finally {
 			if (isMountedRef.current) setIsLoading(false);
 		}
-	}, [activeOrganization, removeOrganization]);
+	}, [activeOrganization, removeOrganization, organizations.length]);
 
 	if (!activeOrganization) {
 		return <OrganizationSkeleton />;
@@ -208,13 +194,14 @@ export default function OrganizationCard() {
 							</h3>
 							<div className="flex items-center gap-2 mt-1">
 								<Badge
-									variant={getPlanBadgeVariant(planTier)}
 									className={cn(
 										"capitalize font-medium",
 										planTier === "enterprise" &&
 											"bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0",
 										planTier === "pro" &&
-											"bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0"
+											"bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0",
+										planTier === "free" &&
+											"bg-secondary text-secondary-foreground"
 									)}
 								>
 									<PlanIcon className="w-3 h-3 mr-1" />

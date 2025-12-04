@@ -32,17 +32,9 @@ import {
 import { usePlaybooks } from "@/hooks/use-playbooks";
 import { PlaybookWithItems } from "@/types/audit";
 import { toast } from "sonner";
-
-const SOURCE_ICONS: Record<string, string> = {
-	SLACK: "💬",
-	GOOGLE: "🔍",
-	MICROSOFT: "🪟",
-	NOTION: "📝",
-	DROPBOX: "📦",
-	FIGMA: "🎨",
-	LINEAR: "📐",
-	JIRA: "🔷",
-};
+import Image from "next/image";
+import { SOURCE_ICONS } from "@/lib/utils";
+import { ToolSource } from "@prisma/client";
 
 const IMPACT_CONFIG = {
 	SECURITY: {
@@ -216,7 +208,12 @@ export default function PlaybookDetailPage() {
 			<Card className="p-6">
 				<div className="flex items-start gap-4">
 					<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center text-2xl flex-shrink-0">
-						{SOURCE_ICONS[playbook.source] || "📋"}
+						<Image
+							src={SOURCE_ICONS[playbook.source as ToolSource]}
+							alt={`${playbook.source} icon`}
+							width={20}
+							height={20}
+						/>
 					</div>
 					<div className="flex-1">
 						<div className="flex items-center gap-2 mb-2">

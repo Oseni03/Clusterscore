@@ -36,16 +36,11 @@ import {
 	Search,
 	Filter,
 	FileText,
-	Image as ImageIcon,
-	Film,
-	Archive,
-	Database,
 	MoreHorizontal,
 	Trash2,
 	Download,
 	ChevronLeft,
 	ChevronRight,
-	Music,
 	AlertCircle,
 	Loader2,
 	RefreshCw,
@@ -60,29 +55,7 @@ import {
 import { useFiles } from "@/hooks/use-files";
 import { FileType, ToolSource } from "@prisma/client";
 import Image from "next/image";
-
-const FILE_TYPE_ICONS = {
-	DOCUMENT: FileText,
-	IMAGE: ImageIcon,
-	VIDEO: Film,
-	MUSIC: Music,
-	ARCHIVE: Archive,
-	DATABASE: Database,
-	OTHER: FileText,
-};
-
-const SOURCE_ICONS: Record<ToolSource, string> = {
-	SLACK: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/slack.svg",
-	GOOGLE: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/google.svg",
-	MICROSOFT:
-		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg",
-	NOTION: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/notion.svg",
-	DROPBOX:
-		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/dropbox.svg",
-	FIGMA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/figma.svg",
-	LINEAR: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linear.svg",
-	JIRA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jira.svg",
-};
+import { FILE_TYPE_ICONS, SOURCE_ICONS } from "@/lib/utils";
 
 export default function FilesPage() {
 	const {

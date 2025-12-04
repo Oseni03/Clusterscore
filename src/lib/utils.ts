@@ -1,5 +1,16 @@
+import { ToolSource } from "@prisma/client";
 import { clsx, type ClassValue } from "clsx";
-import { Building2, DollarSign, Zap } from "lucide-react";
+import {
+	Archive,
+	Building2,
+	Database,
+	DollarSign,
+	FileText,
+	Film,
+	ImageIcon,
+	Music,
+	Zap,
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -72,4 +83,27 @@ export const getPlanByProductId = (productId: string) => {
 		SUBSCRIPTION_PLANS.find((plan) => plan.productId === productId) ||
 		FREE_PLAN
 	);
+};
+
+export const FILE_TYPE_ICONS = {
+	DOCUMENT: FileText,
+	IMAGE: ImageIcon,
+	VIDEO: Film,
+	MUSIC: Music,
+	ARCHIVE: Archive,
+	DATABASE: Database,
+	OTHER: FileText,
+};
+
+export const SOURCE_ICONS: Record<ToolSource, string> = {
+	SLACK: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/slack.svg",
+	GOOGLE: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/google.svg",
+	MICROSOFT:
+		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg",
+	NOTION: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/notion.svg",
+	DROPBOX:
+		"https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/dropbox.svg",
+	FIGMA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/figma.svg",
+	LINEAR: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linear.svg",
+	JIRA: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jira.svg",
 };

@@ -49,17 +49,8 @@ import { useConnectorSync } from "@/hooks/use-connector-sync";
 import { ToolSource } from "@prisma/client";
 import { toast } from "sonner";
 import { logger } from "better-auth";
-
-const SOURCE_ICONS: Record<ToolSource, string> = {
-	SLACK: "💬",
-	GOOGLE: "🔍",
-	MICROSOFT: "🪟",
-	NOTION: "📝",
-	DROPBOX: "📦",
-	FIGMA: "🎨",
-	LINEAR: "📐",
-	JIRA: "🔷",
-};
+import { SOURCE_ICONS } from "@/lib/utils";
+import Image from "next/image";
 
 const SOURCE_NAMES: Record<ToolSource, string> = {
 	SLACK: "Slack",
@@ -444,7 +435,16 @@ export default function IntegrationsTab() {
 									) : (
 										<div className="py-8 text-center space-y-4">
 											<div className="h-12 w-12 rounded-full bg-muted mx-auto flex items-center justify-center text-2xl">
-												{SOURCE_ICONS[source]}
+												<Image
+													src={
+														SOURCE_ICONS[
+															source as ToolSource
+														]
+													}
+													alt={`${source} icon`}
+													width={20}
+													height={20}
+												/>
 											</div>
 											<div>
 												<h3 className="font-medium">
