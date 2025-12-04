@@ -25,6 +25,8 @@ export interface Member extends BaseMember {
 	user: MemberUser;
 }
 export interface Organization extends BaseOrganization {
+	targetScore: number;
+	subscriptionTier: string;
 	subscription?: Subscription;
 }
 

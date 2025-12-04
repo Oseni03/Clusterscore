@@ -111,7 +111,7 @@ model Organization {
   activities   Activity[]
   feedbacks    Feedback[]
 
-  tagetScore       Int?    @default(75)
+  targetScore      Int?    @default(75)
   subscriptionTier String? @default("free")
 
   @@unique([slug])
