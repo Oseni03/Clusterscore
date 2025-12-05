@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { APP_NAME } from "./config";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -9,7 +10,7 @@ export async function sendEmail(data: {
 }) {
 	try {
 		const { data: result, error } = await resend.emails.send({
-			from: "Clusterscore <organization@resend.dev>",
+			from: `${APP_NAME} <${APP_NAME.toLowerCase()}@resend.dev>`,
 			to: data.to,
 			subject: data.subject,
 			react: data.react,

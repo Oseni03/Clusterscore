@@ -6,31 +6,12 @@ import { toast } from "sonner";
 import { submitFeedback } from "@/server/feedback";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { APP_NAME } from "@/lib/config";
 
 export type FeedbackFormValues = {
 	title: string;
 	details: string;
 };
-
-function formatTelegramFeedback(
-	appName: string,
-	userEmail: string,
-	title: string,
-	details: string
-) {
-	return `
-<b>📝 New Feedback Received</b>
-
-<b>App:</b> ${appName}
-<b>User:</b> ${userEmail}
-
-<b>Title:</b> ${title}
-
-<b>Details:</b>
-<pre>${details}</pre>
-  `;
-}
 
 export function useFeedbackForm() {
 	const { data: session } = authClient.useSession();
@@ -53,25 +34,21 @@ export function useFeedbackForm() {
 		setLoading(true);
 
 		try {
+			// Pass all data to server action - it will handle Telegram notification
 			const result = await submitFeedback(
 				activeOrganization.id,
 				session.user.id,
 				{
 					title: values.title,
 					details: values.details,
+				},
+				{
+					appName: `${APP_NAME} - ${activeOrganization.name}`,
+					userEmail: session.user.email!,
 				}
 			);
 
 			if (result.success) {
-				// --- SEND FEEDBACK TO TELEGRAM ---
-				const formatted = formatTelegramFeedback(
-					`Clusterscore - ${activeOrganization.name}`,
-					session.user.email!,
-					values.title,
-					values.details
-				);
-				await sendTelegramMessage(formatted);
-
 				toast.success("Thanks for your feedback!");
 				form.reset();
 			} else {

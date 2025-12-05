@@ -4,6 +4,12 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { OrganizationStoreProvider } from "@/zustand/providers/organization-store-provider";
+import {
+	APP_DESCRIPTION,
+	APP_ICON_IMAGE,
+	APP_NAME,
+	APP_URL,
+} from "@/lib/config";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -17,11 +23,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: {
-		default: "ClusterScore - Digital Workspace Hygiene Platform",
-		template: "%s | ClusterScore",
+		default: `${APP_NAME} - Digital Workspace Hygiene Platform`,
+		template: `%s | ${APP_NAME}`,
 	},
-	description:
-		"Audit, optimize, and secure your digital workspace in minutes. ClutterScore identifies waste, security risks, and inefficiencies across Slack, Google Drive, Microsoft 365, and more.",
+	description: APP_DESCRIPTION,
 	keywords: [
 		"workspace audit",
 		"digital hygiene",
@@ -36,15 +41,15 @@ export const metadata: Metadata = {
 		"Microsoft 365 audit",
 	],
 	authors: [{ name: "ClutterScore" }],
-	creator: "ClusterScore",
+	creator: APP_NAME,
 	// openGraph: {
 	// 	type: "website",
 	// 	locale: "en_US",
 	// 	url:
 	// 		process.env.NEXT_PUBLIC_BASE_URL ||
-	// 		"https://clusterscore.vercel.app",
-	// 	siteName: "ClusterScore",
-	// 	title: "ClusterScore - Digital Workspace Hygiene Platform",
+	// 		"https://clutterscore.vercel.app",
+	// 	siteName: "ClutterScore",
+	// 	title: "ClutterScore - Digital Workspace Hygiene Platform",
 	// 	description:
 	// 		"Audit your workspace in 90 seconds. Identify waste, security risks, and optimization opportunities across your entire digital ecosystem.",
 	// 	images: [
@@ -52,13 +57,13 @@ export const metadata: Metadata = {
 	// 			url: "/og-image.png",
 	// 			width: 1200,
 	// 			height: 630,
-	// 			alt: "ClusterScore - Digital Workspace Hygiene Platform",
+	// 			alt: "ClutterScore - Digital Workspace Hygiene Platform",
 	// 		},
 	// 	],
 	// },
 	// twitter: {
 	// 	card: "summary_large_image",
-	// 	title: "ClusterScore - Digital Workspace Hygiene Platform",
+	// 	title: "ClutterScore - Digital Workspace Hygiene Platform",
 	// 	description:
 	// 		"Audit your workspace in 90 seconds. Find waste, risks, and savings opportunities.",
 	// 	images: ["/og-image.png"],
@@ -79,14 +84,14 @@ export const metadata: Metadata = {
 		icon: [
 			{ url: "/favicon.ico" },
 			{
-				url: "/generated_images/logo.png",
+				url: APP_ICON_IMAGE,
 				type: "image/png",
 				sizes: "32x32",
 			},
 		],
 		apple: [
 			{
-				url: "/generated_images/logo.png",
+				url: APP_ICON_IMAGE,
 				sizes: "180x180",
 				type: "image/png",
 			},
@@ -94,7 +99,7 @@ export const metadata: Metadata = {
 	},
 	// manifest: "/site.webmanifest",
 	alternates: {
-		canonical: "https://clusterscore.vercel.app",
+		canonical: APP_URL,
 	},
 };
 

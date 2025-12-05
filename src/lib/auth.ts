@@ -12,6 +12,7 @@ import { SUBSCRIPTION_PLANS } from "./utils";
 import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
+import { APP_NAME } from "./config";
 
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
@@ -19,7 +20,7 @@ const polarClient = new Polar({
 });
 
 export const auth = betterAuth({
-	appName: "Clusterscore",
+	appName: APP_NAME,
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {
 		cookieCache: {
@@ -71,7 +72,7 @@ export const auth = betterAuth({
 			async sendInvitationEmail(data) {
 				const { success, error } = await sendEmail({
 					to: data.email,
-					subject: `Invitation to join ${data.organization.name} on Clusterscore`,
+					subject: `Invitation to join ${data.organization.name} on ${APP_NAME}`,
 					react: OrganizationInvitationEmail({
 						organizationName: data.organization.name,
 						inviterName: data.inviter.user.name || "Someone",

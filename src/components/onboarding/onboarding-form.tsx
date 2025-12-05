@@ -32,6 +32,7 @@ import Logo from "@/components/logo";
 import { createOrganization } from "@/server/organizations";
 import { authClient } from "@/lib/auth-client";
 import { SUBSCRIPTION_PLANS } from "@/lib/utils";
+import { APP_NAME } from "@/lib/config";
 
 const formSchema = z.object({
 	name: z
@@ -162,7 +163,7 @@ export function OnboardingForm({ user }: OnboardingFormProps) {
 					<Logo className="h-8 w-8" />
 				</div>
 				<CardTitle className="text-3xl font-bold">
-					Welcome to Clusterscore!
+					{`Welcome to ${APP_NAME}!`}
 				</CardTitle>
 				<CardDescription className="text-base mt-2">
 					{`Let's create your first workspace to get started`}

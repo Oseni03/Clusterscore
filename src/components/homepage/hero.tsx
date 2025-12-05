@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/config";
 
 function Hero() {
 	return (
@@ -47,7 +48,7 @@ function Hero() {
 								"h-14 px-8 text-lg font-semibold"
 							)}
 						>
-							Get Your Clusterscore
+							{`Get Your ${APP_NAME}`}
 							<ArrowRight className="ml-2 h-5 w-5" />
 						</Link>
 						<Button

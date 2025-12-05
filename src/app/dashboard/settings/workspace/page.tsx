@@ -82,10 +82,10 @@ export default function WorkspacePage() {
 			<div className="w-full max-w-6xl p-6 space-y-6">
 				<div className="mb-8">
 					<h1 className="text-2xl font-display font-bold">
-						Organization Settings
+						Workspace Settings
 					</h1>
 					<p className="text-muted-foreground">
-						Manage your organization details and preferences.
+						Manage your workspace details and preferences.
 					</p>
 				</div>
 
