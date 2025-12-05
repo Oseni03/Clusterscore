@@ -216,7 +216,12 @@ export default function IntegrationsTab() {
 						>
 							<div className="flex items-center gap-4">
 								<div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xl">
-									{SOURCE_ICONS[source]}
+									<Image
+										src={SOURCE_ICONS[source as ToolSource]}
+										alt={`${source} icon`}
+										width={20}
+										height={20}
+									/>
 								</div>
 								<div>
 									<div className="font-medium flex items-center gap-2">
@@ -257,9 +262,16 @@ export default function IntegrationsTab() {
 								<DialogContent>
 									<DialogHeader>
 										<DialogTitle className="flex items-center gap-2">
-											<span className="text-xl">
-												{SOURCE_ICONS[source]}
-											</span>
+											<Image
+												src={
+													SOURCE_ICONS[
+														source as ToolSource
+													]
+												}
+												alt={`${source} icon`}
+												width={20}
+												height={20}
+											/>
 											{SOURCE_NAMES[source]} Settings
 										</DialogTitle>
 										<DialogDescription>
