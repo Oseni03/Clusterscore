@@ -35,7 +35,7 @@ export function FeedbackMenuItem() {
 		<Dialog>
 			<DialogTrigger asChild>
 				<SidebarMenuButton size="sm">
-					<Send />
+					<Send className="h-5 w-5 mr-2" />
 					<span>Feedback</span>
 				</SidebarMenuButton>
 			</DialogTrigger>
