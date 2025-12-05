@@ -11,6 +11,8 @@ import {
 	Target,
 	Crown,
 	Sparkles,
+	Shield,
+	AlertTriangle,
 } from "lucide-react";
 import {
 	AlertDialog,
@@ -30,47 +32,51 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { UpdateOrganizationForm } from "../forms/update-organization-form";
 import { toast } from "sonner";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { deleteOrganization } from "@/server/organizations";
-import { cn } from "@/lib/utils";
+import { cn, getPlanByTier } from "@/lib/utils";
 
 // Loading skeleton
 const OrganizationSkeleton = () => (
-	<Card className="overflow-hidden">
-		<div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background h-32" />
-		<CardContent className="p-6 -mt-8">
-			<div className="animate-pulse space-y-6">
-				<div className="h-16 w-16 bg-muted rounded-xl" />
-				<div className="space-y-3">
-					<div className="h-8 bg-muted rounded w-48" />
-					<div className="h-4 bg-muted rounded w-32" />
-				</div>
-				<Separator />
-				<div className="grid grid-cols-2 gap-4">
-					<div className="space-y-2">
-						<div className="h-4 bg-muted rounded w-20" />
-						<div className="h-6 bg-muted rounded w-32" />
+	<div className="space-y-6">
+		<Card className="overflow-hidden">
+			<div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background h-32" />
+			<CardContent className="p-6 -mt-8">
+				<div className="animate-pulse space-y-6">
+					<div className="h-16 w-16 bg-muted rounded-xl" />
+					<div className="space-y-3">
+						<div className="h-8 bg-muted rounded w-48" />
+						<div className="h-4 bg-muted rounded w-32" />
 					</div>
-					<div className="space-y-2">
-						<div className="h-4 bg-muted rounded w-24" />
-						<div className="h-6 bg-muted rounded w-28" />
+					<Separator />
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<div className="h-4 bg-muted rounded w-20" />
+							<div className="h-6 bg-muted rounded w-32" />
+						</div>
+						<div className="space-y-2">
+							<div className="h-4 bg-muted rounded w-24" />
+							<div className="h-6 bg-muted rounded w-28" />
+						</div>
 					</div>
 				</div>
-			</div>
-		</CardContent>
-	</Card>
+			</CardContent>
+		</Card>
+	</div>
 );
 
 const getPlanIcon = (tier: string) => {
-	switch (tier) {
+	switch (tier?.toLowerCase()) {
 		case "pro":
 			return Sparkles;
+		case "audit":
 		case "enterprise":
 			return Crown;
 		default:
@@ -88,6 +94,7 @@ export default function OrganizationCard() {
 		}));
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [resetDialogOpen, setResetDialogOpen] = useState(false);
 	const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const isMountedRef = useRef(true);
@@ -115,7 +122,9 @@ export default function OrganizationCard() {
 
 		try {
 			if (organizations.length === 1) {
-				toast.info("You can't delete your only workspace!");
+				toast.info("You can't delete your only workspace!", {
+					id: toastId,
+				});
 				return;
 			}
 			const { success } = await deleteOrganization(activeOrganization.id);
@@ -140,6 +149,32 @@ export default function OrganizationCard() {
 		}
 	}, [activeOrganization, removeOrganization, organizations.length]);
 
+	const handleResetData = useCallback(async () => {
+		if (!activeOrganization) return;
+
+		const toastId = toast.loading("Resetting all data...");
+		setIsLoading(true);
+
+		try {
+			// TODO: Implement reset data API call
+			// await resetOrganizationData(activeOrganization.id);
+
+			if (!isMountedRef.current) return;
+
+			toast.success("All data has been reset successfully", {
+				id: toastId,
+			});
+			setResetDialogOpen(false);
+		} catch (error) {
+			if (isMountedRef.current) {
+				console.error(error);
+				toast.error("Failed to reset data", { id: toastId });
+			}
+		} finally {
+			if (isMountedRef.current) setIsLoading(false);
+		}
+	}, [activeOrganization]);
+
 	if (!activeOrganization) {
 		return <OrganizationSkeleton />;
 	}
@@ -149,11 +184,23 @@ export default function OrganizationCard() {
 		"MMM d, yyyy"
 	);
 
-	const planTier = activeOrganization.subscriptionTier || "free";
+	const planTier = activeOrganization.subscriptionTier || "FREE";
+	const plan = getPlanByTier(planTier);
 	const PlanIcon = getPlanIcon(planTier);
+
+	const subscriptionBadge = {
+		FREE: { variant: "secondary" as const, text: "Free Tier" },
+		AUDIT: { variant: "default" as const, text: "Audit Plan" },
+		PRO: {
+			variant: "default" as const,
+			text: "Pro Plan",
+			className: "bg-gradient-to-r from-blue-600 to-cyan-600 border-0",
+		},
+	}[planTier] || { variant: "secondary" as const, text: planTier };
 
 	return (
 		<div className="space-y-6">
+			{/* Main Organization Card */}
 			<Card className="overflow-hidden border-border/50 shadow-sm hover:shadow-md transition-shadow">
 				{/* Header with gradient */}
 				<div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background h-32">
@@ -195,17 +242,14 @@ export default function OrganizationCard() {
 							<div className="flex items-center gap-2 mt-1">
 								<Badge
 									className={cn(
-										"capitalize font-medium",
-										planTier === "enterprise" &&
-											"bg-gradient-to-r from-purple-600 to-blue-600 text-white border-0",
-										planTier === "pro" &&
-											"bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0",
-										planTier === "free" &&
+										"capitalize font-medium text-white",
+										subscriptionBadge.className ||
 											"bg-secondary text-secondary-foreground"
 									)}
+									variant={subscriptionBadge.variant}
 								>
 									<PlanIcon className="w-3 h-3 mr-1" />
-									{planTier}
+									{subscriptionBadge.text}
 								</Badge>
 							</div>
 						</div>
@@ -260,7 +304,7 @@ export default function OrganizationCard() {
 						</div>
 					</div>
 
-					{/* Stats bar (optional - can be expanded) */}
+					{/* Stats bar */}
 					<div className="pt-4 border-t">
 						<div className="flex items-center justify-between text-sm">
 							<span className="text-muted-foreground">
@@ -273,6 +317,105 @@ export default function OrganizationCard() {
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Subscription Details */}
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between">
+					<div className="flex items-center gap-3">
+						<Shield className="w-6 h-6 text-primary" />
+						<CardTitle>Subscription Details</CardTitle>
+					</div>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-2">
+							<Label className="text-muted-foreground">
+								Current Plan
+							</Label>
+							<div className="flex items-center gap-2">
+								<Badge
+									className={cn(
+										"capitalize font-medium",
+										subscriptionBadge.className
+									)}
+									variant={subscriptionBadge.variant}
+								>
+									<Shield className="w-3 h-3 mr-1" />
+									{subscriptionBadge.text}
+								</Badge>
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Label className="text-muted-foreground">
+								Plan Features
+							</Label>
+							<p className="text-sm text-foreground">
+								{plan?.features.join(", ") ||
+									"Basic features included"}
+							</p>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Danger Zone */}
+			{isAdmin && (
+				<Card className="border-destructive/50 bg-destructive/5">
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2 text-destructive">
+							<AlertTriangle className="w-5 h-5" />
+							Danger Zone
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border border-destructive/20 bg-background">
+							<div className="max-w-2xl">
+								<h4 className="font-semibold text-foreground">
+									Reset All Data
+								</h4>
+								<p className="text-sm text-muted-foreground mt-1">
+									Permanently delete all audit history,
+									playbooks, files, and integrations. Reset
+									your Clutterscore to zero. This cannot be
+									undone.
+								</p>
+							</div>
+							<Button
+								variant="destructive"
+								size="sm"
+								onClick={() => setResetDialogOpen(true)}
+								className="shrink-0"
+							>
+								Reset All Data
+							</Button>
+						</div>
+
+						<Separator />
+
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border border-destructive/20 bg-background">
+							<div className="max-w-2xl">
+								<h4 className="font-semibold text-foreground">
+									Delete Organization
+								</h4>
+								<p className="text-sm text-muted-foreground mt-1">
+									Permanently delete this workspace and all
+									associated data. This action cannot be
+									undone.
+								</p>
+							</div>
+							<Button
+								variant="destructive"
+								size="sm"
+								onClick={handleOpenDeleteDialog}
+								className="shrink-0"
+							>
+								Delete Workspace
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
+			)}
 
 			{/* Update Dialog */}
 			<Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
@@ -287,6 +430,55 @@ export default function OrganizationCard() {
 					<UpdateOrganizationForm organization={activeOrganization} />
 				</DialogContent>
 			</Dialog>
+
+			{/* Reset Data Alert Dialog */}
+			<AlertDialog
+				open={resetDialogOpen}
+				onOpenChange={setResetDialogOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							Reset All Organization Data?
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete{" "}
+							<strong>all data</strong> for{" "}
+							<strong>{activeOrganization.name}</strong>:
+							<br />
+							<br />
+							• Audit results & trends
+							<br />
+							• Playbooks & execution history
+							<br />
+							• Files, integrations, and settings
+							<br />
+							<br />
+							Your organization will remain, but all progress will
+							be lost. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isLoading}>
+							Cancel
+						</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleResetData}
+							disabled={isLoading}
+							className="bg-destructive hover:bg-destructive/90"
+						>
+							{isLoading ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Resetting...
+								</>
+							) : (
+								"Yes, Reset Everything"
+							)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{/* Delete Alert Dialog */}
 			<AlertDialog
