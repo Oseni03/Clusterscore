@@ -3,7 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Building2, Crown, Zap } from "lucide-react";
-import { SUBSCRIPTION_PLANS } from "@/lib/utils";
+import {
+	getPlanByProductId,
+	getPlanByTier,
+	SUBSCRIPTION_PLANS,
+} from "@/lib/utils";
 import { toast } from "sonner";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { authClient } from "@/lib/auth-client";
@@ -71,20 +75,14 @@ const SubscriptionCard = () => {
 		}
 	};
 
-	const getSubscriptionFeatures = (subscription: string) => {
-		const plan = SUBSCRIPTION_PLANS.find(
-			(plan) => plan.id === subscription
-		);
+	const getSubscriptionFeatures = (tier: string) => {
+		const plan = SUBSCRIPTION_PLANS.find((plan) => plan.id === tier);
 
 		return plan?.features;
 	};
 
-	const getPlanFromProductId = (productId: string) => {
-		return SUBSCRIPTION_PLANS.find((plan) => plan.productId === productId);
-	};
-
-	const getSubscriptionIcon = (productId: string) => {
-		const plan = getPlanFromProductId(productId);
+	const getSubscriptionIcon = (tier: string) => {
+		const plan = getPlanByTier(tier);
 		switch (plan?.id) {
 			case "enterprise":
 				return <Crown className="w-5 h-5 text-purple-500" />;
@@ -99,9 +97,9 @@ const SubscriptionCard = () => {
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					{activeOrganization?.subscription &&
+					{activeOrganization &&
 						getSubscriptionIcon(
-							activeOrganization.subscription.productId
+							activeOrganization.subscriptionTier || "free"
 						)}
 					Subscription Plan
 				</CardTitle>
@@ -111,7 +109,7 @@ const SubscriptionCard = () => {
 					<div>
 						<h3 className="text-lg font-semibold capitalize">
 							{subscription
-								? getPlanFromProductId(subscription.productId)
+								? getPlanByProductId(subscription.productId)
 										?.name
 								: "Free"}{" "}
 							Plan
@@ -171,8 +169,7 @@ const SubscriptionCard = () => {
 					<h4 className="font-medium mb-3">Features included:</h4>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{getSubscriptionFeatures(
-							getPlanFromProductId(subscription?.productId || "")
-								?.id || "free"
+							activeOrganization?.subscriptionTier || "free"
 						)?.map((feature, index) => (
 							<div
 								key={index}
