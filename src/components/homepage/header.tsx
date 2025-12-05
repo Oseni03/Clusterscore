@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { NavUser } from "../nav-user";
 import { Button } from "../ui/button";
 
 function Header() {
@@ -49,12 +48,9 @@ function Header() {
 				</div>
 				<div className="flex items-center gap-4">
 					{user?.id ? (
-						<>
-							<NavUser />
-							<Button onClick={() => router.push("/dashboard")}>
-								Dashboard
-							</Button>
-						</>
+						<Button onClick={() => router.push("/dashboard")}>
+							Dashboard
+						</Button>
 					) : (
 						<>
 							<Button
